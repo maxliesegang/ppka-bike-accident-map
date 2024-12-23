@@ -1,7 +1,49 @@
 .map {
-    position: absolute;
-    top: 0px;
-    bottom: 0px;
-    left: 0px;
-    right: 0px;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+}
+
+/* Styles for the legend container */
+.info.legend {
+  background: white; /* white background for visibility */
+  padding: 10px; /* add padding for better spacing */
+  border-radius: 8px; /* rounded corners for a modern look */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* subtle shadow for depth */
+  font-size: 14px; /* legible font size */
+  line-height: 1.6; /* enhance readability */
+  width: 200px; /* set a reasonable width for the legend box */
+}
+
+/* Ensure title stands out */
+.info.legend strong {
+  font-weight: bold;
+  font-size: 16px;
+  display: block; /* block structure for better title separation */
+  margin-bottom: 8px;
+  color: #333; /* darker color for contrast */
+}
+
+/* Style for category items */
+.info.legend .circle {
+  height: 12px; /* size of the colored circle */
+  width: 12px;
+  border-radius: 50%; /* make it circular */
+  display: inline-block;
+  margin-right: 8px; /* spacing between the circle and its text */
+  vertical-align: middle;
+  border: 1px solid #000000; /* make the circle more visible */
+}
+
+/* Add spacing between category rows */
+.info.legend div {
+  padding: 4px 0; /* space between rows */
+}
+
+/* Hover effect for interactivity (Optional) */
+.info.legend .circle:hover {
+  transform: scale(1.2); /* slightly increase size */
+  transition: transform 0.2s ease; /* smooth hover animation */
 }
