@@ -1,0 +1,115 @@
+@import '~leaflet/dist/leaflet.css';
+
+html {
+  font-size: 100%;
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+
+.map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.legend {
+  position: absolute;
+  bottom: 2em; /* Using em for relative spacing */
+  left: 2em; /* Adjust to scale with text size */
+  background-color: white;
+  padding: 1em; /* Set padding in em */
+  border-radius: 0.5em; /* Rounded corners in em */
+  box-shadow: 0 0.2em 0.4em rgba(0, 0, 0, 0.2);
+  font-family: Arial, sans-serif;
+  font-size: 0.75em; /* Adjust font size for smaller screens */
+  z-index: 1000;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1em; /* Spacing in em instead of px */
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color {
+  width: 1em; /* Responsive size in em */
+  height: 1em; /* Responsive size in em */
+  margin-right: 0.5em;
+  border: 0.1em solid #000;
+  border-radius: 50%; /* Keep circular style */
+  flex-shrink: 0;
+}
+
+.legend-severity {
+  display: flex;
+  align-items: center;
+}
+
+.legend-text {
+  text-align: left;
+  margin-left: 0.5em; /* Adjust spacing */
+}
+
+.popup-container {
+  max-height: 12.5em; /* Smaller height for smaller screens */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1em; /* Flexible padding in em */
+  background-color: white;
+  border: 0.1em solid #ddd;
+  border-radius: 0.5em;
+  box-shadow: 0 0.2em 0.4em rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+  font-size: 0.875em; /* Slightly smaller font size */
+}
+
+.popup-header {
+  margin-bottom: 1em;
+  font-size: 1em; /* Adjust heading font size */
+  color: #333;
+  font-family: Arial, sans-serif;
+}
+
+.popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875em; /* Font scales with em */
+  font-family: Arial, sans-serif;
+}
+
+.popup-table-header {
+  background-color: #f9f9f9;
+}
+
+.popup-table th,
+.popup-table td {
+  padding: 0.5em; /* Adjust padding for better fit on smaller screens */
+  border: 0.1em solid #ddd;
+}
+
+.popup-key {
+  font-weight: bold;
+  color: #555;
+}
+
+.popup-value {
+  color: #333;
+}
+
+.popup-no-properties {
+  font-family: Arial, sans-serif;
+  font-size: 0.875em; /* Smaller text for no-property message */
+  color: #777;
+  text-align: center;
+}

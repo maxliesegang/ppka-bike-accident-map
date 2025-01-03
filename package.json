@@ -1,0 +1,40 @@
+{
+  "name": "ppka-bike-accident-map",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo server running on http://localhost:4000/ && webpack-dev-server --mode development",
+    "build": "webpack --mode production",
+    "format": "prettier --write .",
+    "lint": "eslint --fix ."
+  },
+  "keywords": [],
+  "author": "",
+  "homepage": "https://maxliesegang.github.io/ppka-bike-accident-map",
+  "license": "MIT",
+  "description": "",
+  "type": "module",
+  "devDependencies": {
+    "@types/leaflet": "^1.9.15",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^7.1.2",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "html-webpack-plugin": "^5.6.3",
+    "mini-css-extract-plugin": "^2.9.2",
+    "prettier": "^3.4.2",
+    "ts-loader": "^9.5.1",
+    "typescript-eslint": "^8.18.2",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
+  },
+  "dependencies": {
+    "@ngageoint/geopackage": "^4.2.6",
+    "leaflet": "^1.9.4",
+    "node-polyfill-webpack-plugin": "^4.1.0"
+  }
+}
