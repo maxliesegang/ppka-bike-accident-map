@@ -1,0 +1,52 @@
+@import '~leaflet/dist/leaflet.css';
+
+.map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background-color: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; /* Add spacing for clarity */
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color {
+  width: 15px;
+  height: 15px;
+  margin-right: 10px;
+  border: 1px solid #000;
+  border-radius: 50%; /* Make the legend colors circular like markers */
+  flex-shrink: 0;
+}
+
+/* Style for severity-specific legend items */
+.legend-severity {
+  display: flex;
+  align-items: center;
+}
+
+.legend-text {
+  text-align: left; /* Align text to the left */
+  margin-left: 5px; /* Add spacing between color and text */
+}
