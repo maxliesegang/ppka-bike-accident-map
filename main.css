@@ -684,7 +684,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .legend-item {
   display: flex;
   align-items: center;
-  margin-bottom: 10px; /* Add spacing for clarity */
+  margin-bottom: 10px;
 }
 
 .legend-item:last-child {
@@ -696,18 +696,71 @@ svg.leaflet-image-layer.leaflet-interactive path {
   height: 15px;
   margin-right: 10px;
   border: 1px solid #000;
-  border-radius: 50%; /* Make the legend colors circular like markers */
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-/* Style for severity-specific legend items */
 .legend-severity {
   display: flex;
   align-items: center;
 }
 
 .legend-text {
-  text-align: left; /* Align text to the left */
-  margin-left: 5px; /* Add spacing between color and text */
+  text-align: left;
+  margin-left: 5px;
+}
+
+.popup-container {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.popup-header {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #333;
+  font-family: Arial, sans-serif;
+}
+
+.popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
+}
+
+.popup-table-header {
+  background-color: #f9f9f9;
+}
+
+.popup-table th,
+.popup-table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+.popup-key {
+  font-weight: bold;
+  color: #555;
+}
+
+.popup-value {
+  color: #333;
+}
+
+.popup-no-properties {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #777;
+  text-align: center;
 }
 
