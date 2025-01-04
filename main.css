@@ -660,6 +660,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		}
 	}
 
+html {
+  font-size: 100%;
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+
 .map {
   position: absolute;
   top: 0;
