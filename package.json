@@ -15,25 +15,27 @@
   "description": "",
   "type": "module",
   "devDependencies": {
-    "@types/leaflet": "^1.9.15",
-    "@typescript-eslint/eslint-plugin": "^8.18.2",
-    "@typescript-eslint/parser": "^8.18.2",
+    "@types/leaflet": "^1.9.18",
+    "@typescript-eslint/eslint-plugin": "^8.34.1",
+    "@typescript-eslint/parser": "^8.34.1",
     "clean-webpack-plugin": "^4.0.0",
-    "copy-webpack-plugin": "^12.0.2",
+    "copy-webpack-plugin": "^13.0.0",
     "css-loader": "^7.1.2",
-    "eslint": "^9.17.0",
-    "globals": "^15.14.0",
+    "eslint": "^9.29.0",
+    "globals": "^16.2.0",
     "html-webpack-plugin": "^5.6.3",
     "mini-css-extract-plugin": "^2.9.2",
-    "prettier": "^3.4.2",
-    "ts-loader": "^9.5.1",
-    "typescript-eslint": "^8.18.2",
-    "webpack": "^5.97.1",
+    "prettier": "^3.5.3",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.1",
+    "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.0"
+    "webpack-dev-server": "^5.2.2"
   },
   "dependencies": {
     "@ngageoint/geopackage": "^4.2.6",
+    "ajv": "^8.17.1",
     "leaflet": "^1.9.4",
     "node-polyfill-webpack-plugin": "^4.1.0"
   }
