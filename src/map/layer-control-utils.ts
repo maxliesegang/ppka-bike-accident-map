@@ -1,9 +1,6 @@
 import * as L from 'leaflet';
-import {
-  accidentLayerGroups,
-  severityLayerGroups,
-} from './geopackage-layer-utils';
-import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from './map-legend-utils';
+import { accidentLayerGroups, severityLayerGroups } from './layer-groups';
+import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
 
 export function addLayerControlToMap(map: L.Map): void {
   const accidentLayerOverlays: Record<string, L.LayerGroup> = {};
