@@ -1,0 +1,42 @@
+{
+  "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "pathsByYear": {
+    "2016": [
+      "unfallatlas/opendata2016.csv"
+    ],
+    "2017": [
+      "unfallatlas/opendata2017.csv"
+    ],
+    "2018": [
+      "unfallatlas/opendata2018.csv"
+    ],
+    "2019": [
+      "unfallatlas/opendata2019.csv"
+    ],
+    "2020": [
+      "unfallatlas/opendata2020.csv"
+    ],
+    "2021": [
+      "unfallatlas/opendata2021.csv"
+    ],
+    "2022": [
+      "unfallatlas/opendata2022.csv"
+    ],
+    "2023": [
+      "unfallatlas/opendata2023.csv"
+    ],
+    "2024": [
+      "unfallatlas/opendata2024.csv"
+    ]
+  }
+}
