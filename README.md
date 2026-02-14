@@ -20,8 +20,8 @@ The application is deployed on GitHub Pages. You can interact with the live map 
 
 Ensure you have the following prerequisites installed:
 
-- **Node.js** (≥ 16.x)
-- **npm** (≥ 7.x)
+- **Node.js** (≥ 22.x)
+- **npm** (≥ 10.x)
 
 ### 1. Clone the Repository
 
@@ -35,7 +35,7 @@ cd ppka-bike-accident-map
 Run the following command to install required dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 3. Run the Development Server
@@ -97,5 +97,6 @@ The legend dynamically updates to reflect the accident types and severity levels
 
 ## Development Tools
 
-- **Linting**: Run `npm run lint` to lint the codebase.
+- **Linting**: Run `npm run lint` to lint the codebase, or `npm run lint:fix` to auto-fix supported issues.
+- **Type checking**: Run `npm run typecheck` to run TypeScript type checks without emitting files.
 - **Prettier**: Run `npm run format` to format the codebase.

@@ -1,16 +1,20 @@
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  ...tseslint.configs.recommended,
-  { files: ['**/*.{js,mjs,cjs,ts}'] },
   {
-    ignores: ['node_modules', 'dist'], // Ignore unnecessary folders
+    ignores: ['dist', 'node_modules'],
   },
+  ...tseslint.configs.recommended,
   {
+    files: ['**/*.{js,mjs,cjs,ts}'],
     languageOptions: {
-      ecmaVersion: 'latest', // Use the latest ECMAScript standard
-      sourceType: 'module', // Set source type as ES Module
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+      },
     },
   },
 ];

@@ -5,6 +5,9 @@ on:
     branches:
       - main # Replace with your default branch if it's not `main`
 
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -12,19 +15,26 @@ jobs:
     steps:
       # Step 1: Checkout the repository
       - name: Check out the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 2: Set up Node.js
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18 # Use the Node.js version you're working with
+          node-version: 22
+          cache: npm
 
       # Step 3: Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # Step 4: Build the project
+      # Step 4: Validate and build the project
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Build project
         run: npm run build
 
