@@ -4,26 +4,52 @@ import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
 import { createAndRegisterMarker } from './layer-creator';
 import {
+  beginMarkerRegistrationBatch,
   clearRegisteredMarkers,
+  endMarkerRegistrationBatch,
   initializeVisibleLayerGroup,
 } from './layer-filter-utils';
 
 export async function loadGeoPackageFile(map: L.Map): Promise<void> {
   try {
     initializeVisibleLayerGroup(map);
-    clearRegisteredMarkers();
+    clearRegisteredMarkers('local');
 
     const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
-    addGeoPackageLayersToMap(geoPackage);
+    const { addedCount, skippedCount } = addGeoPackageLayersToMap(geoPackage);
+    if (skippedCount > 0) {
+      console.warn(
+        `Skipped ${skippedCount} GeoPackage features without valid point geometry.`,
+      );
+    }
+    console.info(`Loaded ${addedCount} GeoPackage markers.`);
   } catch (error: unknown) {
     console.error('Error loading GeoPackage file:', error);
   }
 }
 
-function addGeoPackageLayersToMap(geoPackage: GeoPackage): void {
-  for (const feature of geoPackage.iterateGeoJSONFeatures(
-    GEOPACKAGE_LAYER_NAME,
-  )) {
-    createAndRegisterMarker(feature);
+function addGeoPackageLayersToMap(geoPackage: GeoPackage): {
+  addedCount: number;
+  skippedCount: number;
+} {
+  let addedCount = 0;
+  let skippedCount = 0;
+
+  beginMarkerRegistrationBatch('local');
+  try {
+    for (const feature of geoPackage.iterateGeoJSONFeatures(
+      GEOPACKAGE_LAYER_NAME,
+    )) {
+      if (createAndRegisterMarker(feature) === null) {
+        skippedCount += 1;
+        continue;
+      }
+
+      addedCount += 1;
+    }
+  } finally {
+    endMarkerRegistrationBatch('local');
   }
+
+  return { addedCount, skippedCount };
 }

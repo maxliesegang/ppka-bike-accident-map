@@ -1,22 +1,18 @@
-import { AccidentProperties } from '../data/accident-properties';
-
 /**
- * Generates HTML content for a popup based on the properties of an accident feature.
- * @param properties - The properties of the accident feature
- * @returns HTML string for the popup content
+ * Generates HTML content for a popup based on arbitrary feature properties.
  */
-export function generatePopupContent(properties: AccidentProperties): string {
+export function generatePopupContent(
+  properties: Record<string, unknown> | null | undefined,
+): string {
   if (!properties) {
     return '<p class="popup-no-properties">No properties available for this feature.</p>';
   }
 
-  // Build rows for the property table
+  // Escape values to avoid injecting untrusted markup from dataset fields.
   const rows = Object.entries(properties)
     .map(
       ([key, value]) =>
-        `<tr><td class="popup-key">${key}</td><td class="popup-value">${
-          value ?? 'N/A'
-        }</td></tr>`,
+        `<tr><td class="popup-key">${escapeHtml(key)}</td><td class="popup-value">${escapeHtml(formatValue(value))}</td></tr>`,
     )
     .join('');
 
@@ -36,4 +32,33 @@ export function generatePopupContent(properties: AccidentProperties): string {
       </table>
     </div>
   `;
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

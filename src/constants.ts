@@ -8,6 +8,21 @@ export const TILE_LAYER_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const TILE_LAYER_ATTRIBUTION =
   '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
+// Unfallatlas CSV configuration
+// Used as fallback when manifest discovery fails.
+export const UNFALLATLAS_SELECTED_YEARS = [2022, 2023, 2024] as const;
+export const UNFALLATLAS_MANIFEST_FILE = 'unfallatlas/manifest.json';
+export const UNFALLATLAS_CSV_PATH_TEMPLATE = 'unfallatlas/opendata{year}.csv';
+export const UNFALLATLAS_CSV_PATH_TEMPLATES = [
+  UNFALLATLAS_CSV_PATH_TEMPLATE,
+  'unfallatlas/Unfallorte{year}.csv',
+  'unfallatlas/unfallorte{year}.csv',
+  'unfallatlas/Unfallorte_{year}.csv',
+  'unfallatlas/unfallorte_{year}.csv',
+] as const;
+export const UNFALLATLAS_SOURCE_NAME =
+  'Unfallatlas (Datenlizenz Deutschland – Namensnennung – Version 2.0)';
+
 // GeoPackage configuration
 export const GEOPACKAGE_FILE_NAME =
   'unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg';
@@ -27,8 +42,31 @@ export const ACCIDENT_LEGENDS: { type: AccidentType; description: string }[] = [
   { type: 'DEFAULT_FILL', description: 'Unbekannter Unfalltyp' },
 ];
 
+export const LOCAL_SEVERITY_LEGENDS: {
+  key: SeverityType;
+  description: string;
+}[] = [
+  { key: 'LOCAL_SEVERE_INJURY', description: 'Schwerverletzungen' },
+  { key: 'LOCAL_INJURY', description: 'Verletzungen' },
+  { key: 'LOCAL_NO_INJURY', description: 'Keine Verletzungen' },
+];
+
+export const UNFALLATLAS_SEVERITY_LEGENDS: {
+  key: SeverityType;
+  description: string;
+}[] = [
+  { key: 'UNFALLATLAS_FATALITY', description: 'Kategorie 1: Mit Getöteten' },
+  {
+    key: 'UNFALLATLAS_SEVERE_INJURY',
+    description: 'Kategorie 2: Mit Schwerverletzten',
+  },
+  {
+    key: 'UNFALLATLAS_LIGHT_INJURY',
+    description: 'Kategorie 3: Mit Leichtverletzten',
+  },
+];
+
 export const SEVERITY_LEGENDS: { key: SeverityType; description: string }[] = [
-  { key: 'SEVERE_INJURY', description: 'Schwerverletzungen' },
-  { key: 'INJURY', description: 'Verletzungen' },
-  { key: 'NO_INJURY', description: 'Keine Verletzungen' },
+  ...LOCAL_SEVERITY_LEGENDS,
+  ...UNFALLATLAS_SEVERITY_LEGENDS,
 ];

@@ -1,12 +1,13 @@
 # PPKA Bike Accident Map
 
-This repository showcases an interactive map application built using **TypeScript**, **Leaflet**, and **GeoPackage**, visualizing bike and pedestrian traffic accident data for the Karlsruhe area from 2018 to 2023.
+This repository showcases an interactive map application built using **TypeScript**, **Leaflet**, and **GeoPackage**, visualizing bike and pedestrian traffic accident data for Karlsruhe and aggregated Unfallatlas OpenData for selectable year ranges.
 
 ## Features
 
 - **Canvas-rendered map**: Uses Leaflet's Canvas renderer with direct `CircleMarker` creation for fast rendering of thousands of accident points.
-- **Filter control**: Collapsible panel (bottom-left) to toggle accident types and severity levels. Serves as both filter and legend with color/size indicators.
+- **Unified filter control**: Collapsible panel (bottom-left) to toggle data source, available Unfallatlas years, accident types, and severity levels.
 - **GeoPackage support**: Loads local GeoPackage data (`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`) for efficient geospatial operations.
+- **Unfallatlas aggregation**: Loads yearly Unfallatlas CSV exports, maps them to existing accident/severity categories, and aggregates them into one view.
 - **Local WASM runtime**: Ships `sql-wasm.wasm` with the build, avoiding runtime CDN dependencies.
 - **Responsive design**: Filter panel collapses on mobile, expands on desktop.
 
@@ -59,7 +60,28 @@ npm run build
 ```
 
 The bundled files will be available in the `dist` directory.
-This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the GeoPackage data file.
+This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, the GeoPackage data file, and optional Unfallatlas CSV files from `data/unfallatlas`.
+
+### 5. Optional: Add Filtered Unfallatlas CSV Data
+
+1. Download yearly CSV zip files from [Unfallatlas OpenData](https://unfallatlas.statistikportal.de/opendata/).
+2. Extract each zip file locally.
+3. Place extracted CSV files in `data/unfallatlas-raw`.
+4. Run:
+
+```bash
+npm run unfallatlas:extract:bw
+```
+
+5. The script writes filtered yearly CSV files (ULAND `08`, Baden-Wuerttemberg) to `data/unfallatlas`.
+   It stages output first and only replaces target CSV files after a successful run.
+6. Any `.csv` filename containing a 4-digit year is auto-discovered at build time and appears in the Unfallatlas year selector.
+
+To extract another state, run:
+
+```bash
+npm run unfallatlas:extract -- --bundesland <name-or-code>
+```
 
 ## Project Structure
 
@@ -76,11 +98,15 @@ This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the Ge
     - `map-utils.ts` — Leaflet map creation with Canvas renderer, tile layer setup.
     - `geopackage-loader.ts` — fetches and opens GeoPackage files.
     - `geopackage-layer-utils.ts` — iterates GeoPackage features and creates markers.
+    - `unfallatlas-loader.ts` — parses yearly Unfallatlas CSV files and maps rows to existing accident/severity categories.
+    - `unfallatlas-layer.ts` — lazy-loads and toggles the Unfallatlas marker layer.
+    - `data-source-utils.ts` — toggles between local and Unfallatlas data sources.
     - `layer-creator.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
     - `layer-filter-utils.ts` — manages marker visibility based on selected accident/severity filters.
     - `layer-control-utils.ts` — custom Leaflet control with grouped, collapsible filter panel.
     - `popup-utils.ts` — generates HTML popup content for marker click.
-- **`webpack.config.js`**: Webpack config for bundling and dev server.
+- **`webpack.config.js`**: Webpack config for bundling/dev server and generating `unfallatlas/manifest.json` from `data/unfallatlas`.
+- **`scripts/extract-unfallatlas-bundesland.mjs`**: Streams raw Unfallatlas CSVs and writes filtered files for a selected `ULAND` code.
 - **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Geospatial accident data (must be in root).
 
 ## Key Technologies Used
@@ -94,9 +120,10 @@ This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the Ge
 ## How the Application Works
 
 1. **Map initialization** — Leaflet map with `preferCanvas: true` for Canvas rendering. Configured in `constants.ts`.
-2. **Data loading** — GeoPackage file is fetched, opened via WASM, and its features are iterated with `for...of` (no full materialization).
-3. **Marker creation** — Each feature becomes an `L.circleMarker` styled by accident type (color) and severity (radius), registered in the filter system.
-4. **Filter control** — Custom collapsible panel in bottom-left. Checkboxes toggle accident types and severity levels independently. Acts as both filter and legend.
+2. **Data loading** — Local GeoPackage data is fetched and iterated with `for...of`. Unfallatlas years are discovered from generated `unfallatlas/manifest.json`; selected years are loaded lazily from local CSV files.
+3. **Normalization** — Unfallatlas rows are transformed into existing `AccidentType` and `SeverityType` categories so both sources use one styling/filter model.
+4. **Marker creation** — Every normalized record becomes an `L.circleMarker` styled by accident type (color) and severity (radius), then registered in the filter system.
+5. **Filter control** — Custom collapsible panel in bottom-left. Users can switch data source, choose available Unfallatlas years, and toggle accident/severity filters independently.
 
 ## Development Tools
 

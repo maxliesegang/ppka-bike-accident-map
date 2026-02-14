@@ -2,3 +2,8 @@ node_modules/
 dist/
 
 .idea/
+.DS_Store
+
+# Raw Unfallatlas source files can be very large.
+data/unfallatlas-raw/*
+!data/unfallatlas-raw/README.md
