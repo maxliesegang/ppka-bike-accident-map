@@ -8,6 +8,7 @@ This repository showcases an interactive map application built using **TypeScrip
 - **Custom Legends**: Provides a detailed legend to interpret accident types and severity indicators.
 - **Layer Control**: Toggle between accident types or severity-based visualizations.
 - **GeoPackage Support**: Loads local GeoPackage data (`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`) for efficient geospatial operations.
+- **Local WASM Runtime**: Ships `sql-wasm.wasm` with the build, avoiding runtime CDN dependencies.
 - **Responsive Design**: Map and legend are styled for usability and clarity.
 
 ## Live Demo
@@ -38,6 +39,8 @@ Run the following command to install required dependencies:
 npm ci --omit=optional
 ```
 
+Note: `.npmrc` already configures `omit=optional`, so `npm ci` behaves the same.
+
 ### 3. Run the Development Server
 
 Start the project in development mode:
@@ -57,6 +60,7 @@ npm run build
 ```
 
 The bundled files will be available in the `dist` directory.
+This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the GeoPackage data file.
 
 ## Project Structure
 
@@ -100,3 +104,4 @@ The legend dynamically updates to reflect the accident types and severity levels
 - **Linting**: Run `npm run lint` to lint the codebase, or `npm run lint:fix` to auto-fix supported issues.
 - **Type checking**: Run `npm run typecheck` to run TypeScript type checks without emitting files.
 - **Prettier**: Run `npm run format` to format the codebase.
+- **Security audit**: Run `npm audit` to verify dependency vulnerability status.
