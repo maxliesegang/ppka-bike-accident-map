@@ -3,7 +3,6 @@ import process from 'node:process';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
-import NodePolyfillPlugin from 'node-polyfill-webpack-plugin';
 
 export default {
   mode: 'development',
@@ -25,11 +24,17 @@ export default {
     extensions: ['.tsx', '.ts', '.js', '.css'],
     fallback: {
       'better-sqlite3': false,
+      crypto: false,
+      fs: false,
+      path: false,
+      stream: false,
+      vm: false,
     },
   },
   output: {
     filename: 'bundle.js',
     path: path.resolve(process.cwd(), 'dist'),
+    clean: true,
   },
 
   plugins: [
@@ -44,9 +49,12 @@ export default {
           from: './unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg', // Absolute path to your file
           to: 'unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg', // Name or path in the `docs` folder
         },
+        {
+          from: './node_modules/@ngageoint/geopackage/dist/sql-wasm.wasm',
+          to: 'sql-wasm.wasm',
+        },
       ],
     }),
-    new NodePolyfillPlugin(),
   ],
 
   devServer: {

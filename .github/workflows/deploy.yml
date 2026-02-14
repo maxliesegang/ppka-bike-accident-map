@@ -26,7 +26,7 @@ jobs:
 
       # Step 3: Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       # Step 4: Validate and build the project
       - name: Lint

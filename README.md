@@ -35,7 +35,7 @@ cd ppka-bike-accident-map
 Run the following command to install required dependencies:
 
 ```bash
-npm ci
+npm ci --omit=optional
 ```
 
 ### 3. Run the Development Server

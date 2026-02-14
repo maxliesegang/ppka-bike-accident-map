@@ -13,8 +13,7 @@ export const TILE_LAYER_ATTRIBUTION =
 export const GEOPACKAGE_FILE_NAME =
   'unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg';
 export const GEOPACKAGE_LAYER_NAME = 'zugeschnitten';
-export const GEOPACKAGE_WASM_URL =
-  'https://unpkg.com/@ngageoint/geopackage@4.2.3/dist/';
+export const GEOPACKAGE_WASM_FILE = 'sql-wasm.wasm';
 
 // Legend element ID
 export const LEGEND_ELEMENT_ID = 'legend';

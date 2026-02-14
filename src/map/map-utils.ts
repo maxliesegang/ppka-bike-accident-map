@@ -4,12 +4,12 @@ import {
   MAP_ZOOM_LEVEL,
   TILE_LAYER_URL,
   TILE_LAYER_ATTRIBUTION,
-  GEOPACKAGE_WASM_URL,
+  GEOPACKAGE_WASM_FILE,
 } from '../constants';
 import { setSqljsWasmLocateFile } from '@ngageoint/geopackage';
 
 export function initializeMap(): L.Map {
-  setSqljsWasmLocateFile((file) => GEOPACKAGE_WASM_URL + file);
+  setSqljsWasmLocateFile(() => GEOPACKAGE_WASM_FILE);
   return L.map('map').setView(MAP_INITIAL_VIEW, MAP_ZOOM_LEVEL);
 }
 

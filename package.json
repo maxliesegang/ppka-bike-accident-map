@@ -21,6 +21,9 @@
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
+  "overrides": {
+    "lodash": "^4.17.23"
+  },
   "devDependencies": {
     "@types/leaflet": "^1.9.21",
     "copy-webpack-plugin": "^13.0.1",
@@ -39,7 +42,6 @@
   },
   "dependencies": {
     "@ngageoint/geopackage": "^4.2.6",
-    "leaflet": "^1.9.4",
-    "node-polyfill-webpack-plugin": "^4.1.0"
+    "leaflet": "^1.9.4"
   }
 }
