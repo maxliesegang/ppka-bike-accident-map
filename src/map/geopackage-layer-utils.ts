@@ -1,30 +1,29 @@
 import { GeoPackage } from '@ngageoint/geopackage';
 import * as L from 'leaflet';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
-import { handleError } from '../utils/error-utils';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
-import { createAndAddGeoJsonLayer } from './layer-creator';
-import { accidentLayerGroups, severityLayerGroups } from './layer-groups';
+import { createAndRegisterMarker } from './layer-creator';
+import {
+  clearRegisteredMarkers,
+  initializeVisibleLayerGroup,
+} from './layer-filter-utils';
 
 export async function loadGeoPackageFile(map: L.Map): Promise<void> {
   try {
+    initializeVisibleLayerGroup(map);
+    clearRegisteredMarkers();
+
     const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
-    addGeoPackageLayersToMap(map, geoPackage);
-    Object.values(accidentLayerGroups).forEach((group) => group.addTo(map));
-    Object.values(severityLayerGroups).forEach((group) => group.addTo(map));
+    addGeoPackageLayersToMap(geoPackage);
   } catch (error: unknown) {
-    handleError('Error loading GeoPackage file:', error);
+    console.error('Error loading GeoPackage file:', error);
   }
 }
 
-function addGeoPackageLayersToMap(
-  map: L.Map,
-  geoPackage: GeoPackage,
-): Array<L.GeoJSON> {
-  const geoJsonFeatures = geoPackage.iterateGeoJSONFeatures(
+function addGeoPackageLayersToMap(geoPackage: GeoPackage): void {
+  for (const feature of geoPackage.iterateGeoJSONFeatures(
     GEOPACKAGE_LAYER_NAME,
-  );
-  return Array.from(geoJsonFeatures).map((geoJsonFeature) =>
-    createAndAddGeoJsonLayer(geoJsonFeature, map),
-  );
+  )) {
+    createAndRegisterMarker(feature);
+  }
 }

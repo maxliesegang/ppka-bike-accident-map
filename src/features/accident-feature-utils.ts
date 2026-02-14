@@ -1,78 +1,57 @@
 import { AccidentProperties } from '../data/accident-properties';
-import { getColorForType } from '../data/color-store';
-import { getRadiusForType } from '../data/radius-store';
+import {
+  AccidentType,
+  getColor,
+  getRadius,
+  SeverityType,
+} from '../data/accident-styles';
 
-// Accident Type Checking Functions
-export const isSingleBikeAccident = (properties: AccidentProperties) =>
-  properties.sum_bike === 1 &&
-  properties.sum_ped === 0 &&
-  properties.sum_car_truck_bus === 0;
+const isSingleBikeAccident = (p: AccidentProperties) =>
+  p.sum_bike === 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0;
 
-export const isBikeOnlyAccident = (properties: AccidentProperties) =>
-  properties.sum_bike > 1 &&
-  properties.sum_ped === 0 &&
-  properties.sum_car_truck_bus === 0;
+const isBikeOnlyAccident = (p: AccidentProperties) =>
+  p.sum_bike > 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0;
 
-export const isBikeAndPedestrianAccident = (properties: AccidentProperties) =>
-  properties.sum_bike > 0 &&
-  properties.sum_ped > 0 &&
-  properties.sum_car_truck_bus === 0;
+const isBikeAndPedestrianAccident = (p: AccidentProperties) =>
+  p.sum_bike > 0 && p.sum_ped > 0 && p.sum_car_truck_bus === 0;
 
-export const isBikeAndVehicleAccident = (properties: AccidentProperties) =>
-  properties.sum_bike > 0 &&
-  properties.sum_ped === 0 &&
-  properties.sum_car_truck_bus > 0;
+const isBikeAndVehicleAccident = (p: AccidentProperties) =>
+  p.sum_bike > 0 && p.sum_ped === 0 && p.sum_car_truck_bus > 0;
 
-export const isPedestrianAndVehicleAccident = (
+const isPedestrianAndVehicleAccident = (p: AccidentProperties) =>
+  p.sum_bike === 0 && p.sum_ped > 0 && p.sum_car_truck_bus > 0;
+
+const hasInjuries = (p: AccidentProperties) =>
+  p.sum_injured_bike > 0 || p.sum_injured_ped > 0;
+
+const hasSevereInjuries = (p: AccidentProperties) =>
+  p.sum_severely_injured_bike > 0;
+
+export function getAccidentType(p: AccidentProperties): AccidentType {
+  if (isBikeAndVehicleAccident(p)) return 'BIKE_AND_VEHICLE';
+  if (isPedestrianAndVehicleAccident(p)) return 'PEDESTRIAN_AND_VEHICLE';
+  if (isBikeAndPedestrianAccident(p)) return 'BIKE_AND_PEDESTRIAN';
+  if (isSingleBikeAccident(p)) return 'SINGLE_BIKE';
+  if (isBikeOnlyAccident(p)) return 'BIKE_ONLY';
+  return 'DEFAULT_FILL';
+}
+
+export function getSeverityType(p: AccidentProperties): SeverityType {
+  if (hasSevereInjuries(p)) return 'SEVERE_INJURY';
+  if (hasInjuries(p)) return 'INJURY';
+  return 'NO_INJURY';
+}
+
+export function getStyle(
   properties: AccidentProperties,
-) =>
-  properties.sum_bike === 0 &&
-  properties.sum_ped > 0 &&
-  properties.sum_car_truck_bus > 0;
-
-export const hasInjuries = (properties: AccidentProperties) =>
-  properties.sum_injured_bike > 0 || properties.sum_injured_ped > 0;
-
-export const hasSevereInjuries = (properties: AccidentProperties) =>
-  properties.sum_severely_injured_bike > 0;
-
-const getFillColor = (properties: AccidentProperties): string => {
-  if (isBikeAndVehicleAccident(properties)) {
-    return getColorForType('BIKE_AND_VEHICLE');
-  }
-  if (isPedestrianAndVehicleAccident(properties)) {
-    return getColorForType('PEDESTRIAN_AND_VEHICLE');
-  }
-  if (isBikeAndPedestrianAccident(properties)) {
-    return getColorForType('BIKE_AND_PEDESTRIAN');
-  }
-  if (isSingleBikeAccident(properties)) {
-    return getColorForType('SINGLE_BIKE');
-  }
-  if (isBikeOnlyAccident(properties)) {
-    return getColorForType('BIKE_ONLY');
-  }
-
-  return getColorForType('DEFAULT_FILL');
-};
-
-const getRadius = (properties: AccidentProperties): number => {
-  if (hasSevereInjuries(properties)) {
-    return getRadiusForType('SEVERE_INJURY');
-  }
-  if (hasInjuries(properties)) {
-    return getRadiusForType('INJURY');
-  }
-
-  return getRadiusForType('NO_INJURY');
-};
-
-export const getStyle = (properties: AccidentProperties) => ({
-  color: '#000000',
-  stroke: true,
-  weight: 1,
-  radius: getRadius(properties),
-  fillColor: getFillColor(properties),
-  opacity: 1,
-  fillOpacity: 0.9,
-});
+): L.CircleMarkerOptions {
+  return {
+    color: '#000000',
+    stroke: true,
+    weight: 1,
+    radius: getRadius(getSeverityType(properties)),
+    fillColor: getColor(getAccidentType(properties)),
+    opacity: 1,
+    fillOpacity: 0.9,
+  };
+}

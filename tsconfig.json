@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "noImplicitAny": true,
+    "strict": true,
     "target": "ES6",
     "module": "esnext",
     "moduleResolution": "node",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   }
 }

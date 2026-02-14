@@ -4,12 +4,11 @@ This repository showcases an interactive map application built using **TypeScrip
 
 ## Features
 
-- **Interactive Map Visualization**: Dynamically displays accident data with layers and markers based on accident types and severities (e.g., bike-vehicle accidents, severe injuries).
-- **Custom Legends**: Provides a detailed legend to interpret accident types and severity indicators.
-- **Layer Control**: Toggle between accident types or severity-based visualizations.
-- **GeoPackage Support**: Loads local GeoPackage data (`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`) for efficient geospatial operations.
-- **Local WASM Runtime**: Ships `sql-wasm.wasm` with the build, avoiding runtime CDN dependencies.
-- **Responsive Design**: Map and legend are styled for usability and clarity.
+- **Canvas-rendered map**: Uses Leaflet's Canvas renderer with direct `CircleMarker` creation for fast rendering of thousands of accident points.
+- **Filter control**: Collapsible panel (bottom-left) to toggle accident types and severity levels. Serves as both filter and legend with color/size indicators.
+- **GeoPackage support**: Loads local GeoPackage data (`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`) for efficient geospatial operations.
+- **Local WASM runtime**: Ships `sql-wasm.wasm` with the build, avoiding runtime CDN dependencies.
+- **Responsive design**: Filter panel collapses on mobile, expands on desktop.
 
 ## Live Demo
 
@@ -65,13 +64,24 @@ This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the Ge
 ## Project Structure
 
 - **`src/`**: Source folder containing TypeScript, CSS, and utility files.
-  - **`data/`**: Stores accident properties and configuration for colors and radii used in markers.
-  - **`map/`**: Contains map initialization, utilities, layer controls, and GeoPackage loading logic.
-  - **`styles.css`**: CSS file for styling the map and legend.
-  - **`index.ts`**: Entry point for initializing the application.
-- **`webpack.config.js`**: Webpack configuration for bundling and serving the application.
-- **`constants.ts`**: Defines key map configurations such as initial view, zoom level, and tile layer URL.
-- **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Contains the geospatial accident data (not included in this README; ensure it's placed in the root directory).
+  - **`index.ts`**: Entry point — initializes map, loads data, adds filter control.
+  - **`constants.ts`**: Map config (view, zoom, tiles), GeoPackage paths, filter entry definitions.
+  - **`styles.css`**: Styles for the map, filter panel, and popups.
+  - **`data/`**: Data types and style config.
+    - `accident-properties.ts` — TypeScript interface for accident feature properties.
+    - `accident-styles.ts` — `AccidentType`/`SeverityType` unions, color and radius lookups.
+  - **`features/`**: Accident classification logic.
+    - `accident-feature-utils.ts` — determines accident type, severity, and marker style from properties.
+  - **`map/`**: Map initialization, data loading, layer management, and UI controls.
+    - `map-utils.ts` — Leaflet map creation with Canvas renderer, tile layer setup.
+    - `geopackage-loader.ts` — fetches and opens GeoPackage files.
+    - `geopackage-layer-utils.ts` — iterates GeoPackage features and creates markers.
+    - `layer-creator.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
+    - `layer-filter-utils.ts` — manages marker visibility based on selected accident/severity filters.
+    - `layer-control-utils.ts` — custom Leaflet control with grouped, collapsible filter panel.
+    - `popup-utils.ts` — generates HTML popup content for marker click.
+- **`webpack.config.js`**: Webpack config for bundling and dev server.
+- **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Geospatial accident data (must be in root).
 
 ## Key Technologies Used
 
@@ -83,21 +93,10 @@ This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, and the Ge
 
 ## How the Application Works
 
-### 1. Map Initialization
-
-The map is initialized with **Leaflet** using configurations in `constants.ts`. Tile layers are added to render a base map.
-
-### 2. Loading GeoPackage Data
-
-Accident data stored in the GeoPackage file is loaded and processed. Accident features are styled based on accident type (`color-store.ts`) and severity (`radius-store.ts`), enabling clear visualization.
-
-### 3. Layer Control
-
-Interactive controls allow users to toggle specific accident types or severities on the map (`layer-control-utils.ts`).
-
-### 4. Legend
-
-The legend dynamically updates to reflect the accident types and severity levels with clear descriptions (`map-legend-utils.ts`).
+1. **Map initialization** — Leaflet map with `preferCanvas: true` for Canvas rendering. Configured in `constants.ts`.
+2. **Data loading** — GeoPackage file is fetched, opened via WASM, and its features are iterated with `for...of` (no full materialization).
+3. **Marker creation** — Each feature becomes an `L.circleMarker` styled by accident type (color) and severity (radius), registered in the filter system.
+4. **Filter control** — Custom collapsible panel in bottom-left. Checkboxes toggle accident types and severity levels independently. Acts as both filter and legend.
 
 ## Development Tools
 
