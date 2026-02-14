@@ -6,6 +6,8 @@
   "scripts": {
     "start": "echo server running on http://localhost:4000/ && webpack-dev-server --mode development",
     "build": "webpack --mode production",
+    "unfallatlas:extract": "node scripts/extract-unfallatlas-bundesland.mjs",
+    "unfallatlas:extract:bw": "node scripts/extract-unfallatlas-bundesland.mjs --bundesland baden-wuerttemberg",
     "format": "prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",

@@ -6,7 +6,13 @@ export type AccidentType =
   | 'BIKE_ONLY'
   | 'DEFAULT_FILL';
 
-export type SeverityType = 'SEVERE_INJURY' | 'INJURY' | 'NO_INJURY';
+export type SeverityType =
+  | 'LOCAL_SEVERE_INJURY'
+  | 'LOCAL_INJURY'
+  | 'LOCAL_NO_INJURY'
+  | 'UNFALLATLAS_FATALITY'
+  | 'UNFALLATLAS_SEVERE_INJURY'
+  | 'UNFALLATLAS_LIGHT_INJURY';
 
 const ACCIDENT_COLORS: Record<AccidentType, string> = {
   BIKE_AND_VEHICLE: '#FF0000',
@@ -18,9 +24,12 @@ const ACCIDENT_COLORS: Record<AccidentType, string> = {
 } as const;
 
 const SEVERITY_RADII: Record<SeverityType, number> = {
-  SEVERE_INJURY: 9,
-  INJURY: 6,
-  NO_INJURY: 3,
+  LOCAL_SEVERE_INJURY: 9,
+  LOCAL_INJURY: 6,
+  LOCAL_NO_INJURY: 3,
+  UNFALLATLAS_FATALITY: 10,
+  UNFALLATLAS_SEVERE_INJURY: 7,
+  UNFALLATLAS_LIGHT_INJURY: 4,
 } as const;
 
 export function getColor(type: AccidentType): string {

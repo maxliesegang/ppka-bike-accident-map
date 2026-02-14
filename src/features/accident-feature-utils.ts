@@ -6,52 +6,112 @@ import {
   SeverityType,
 } from '../data/accident-styles';
 
-const isSingleBikeAccident = (p: AccidentProperties) =>
-  p.sum_bike === 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0;
+type AccidentClassifier = {
+  type: AccidentType;
+  matches: (properties: AccidentProperties) => boolean;
+};
 
-const isBikeOnlyAccident = (p: AccidentProperties) =>
-  p.sum_bike > 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0;
+type SeverityClassifier = {
+  type: SeverityType;
+  matches: (properties: AccidentProperties) => boolean;
+};
 
-const isBikeAndPedestrianAccident = (p: AccidentProperties) =>
-  p.sum_bike > 0 && p.sum_ped > 0 && p.sum_car_truck_bus === 0;
+const ACCIDENT_TYPE_CLASSIFIERS: readonly AccidentClassifier[] = [
+  {
+    type: 'BIKE_AND_VEHICLE',
+    matches: (p) =>
+      p.sum_bike > 0 && p.sum_ped === 0 && p.sum_car_truck_bus > 0,
+  },
+  {
+    type: 'PEDESTRIAN_AND_VEHICLE',
+    matches: (p) =>
+      p.sum_bike === 0 && p.sum_ped > 0 && p.sum_car_truck_bus > 0,
+  },
+  {
+    type: 'BIKE_AND_PEDESTRIAN',
+    matches: (p) =>
+      p.sum_bike > 0 && p.sum_ped > 0 && p.sum_car_truck_bus === 0,
+  },
+  {
+    type: 'SINGLE_BIKE',
+    matches: (p) =>
+      p.sum_bike === 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0,
+  },
+  {
+    type: 'BIKE_ONLY',
+    matches: (p) =>
+      p.sum_bike > 1 && p.sum_ped === 0 && p.sum_car_truck_bus === 0,
+  },
+];
 
-const isBikeAndVehicleAccident = (p: AccidentProperties) =>
-  p.sum_bike > 0 && p.sum_ped === 0 && p.sum_car_truck_bus > 0;
+const SEVERITY_TYPE_CLASSIFIERS: readonly SeverityClassifier[] = [
+  {
+    type: 'LOCAL_SEVERE_INJURY',
+    matches: (p) => p.sum_severely_injured_bike > 0,
+  },
+  {
+    type: 'LOCAL_INJURY',
+    matches: (p) => p.sum_injured_bike > 0 || p.sum_injured_ped > 0,
+  },
+];
 
-const isPedestrianAndVehicleAccident = (p: AccidentProperties) =>
-  p.sum_bike === 0 && p.sum_ped > 0 && p.sum_car_truck_bus > 0;
+const BASE_CIRCLE_MARKER_STYLE: Pick<
+  L.CircleMarkerOptions,
+  'color' | 'stroke' | 'weight' | 'opacity' | 'fillOpacity'
+> = {
+  color: '#000000',
+  stroke: true,
+  weight: 1,
+  opacity: 1,
+  fillOpacity: 0.9,
+};
 
-const hasInjuries = (p: AccidentProperties) =>
-  p.sum_injured_bike > 0 || p.sum_injured_ped > 0;
-
-const hasSevereInjuries = (p: AccidentProperties) =>
-  p.sum_severely_injured_bike > 0;
+const STYLE_CACHE = new Map<string, L.CircleMarkerOptions>();
 
 export function getAccidentType(p: AccidentProperties): AccidentType {
-  if (isBikeAndVehicleAccident(p)) return 'BIKE_AND_VEHICLE';
-  if (isPedestrianAndVehicleAccident(p)) return 'PEDESTRIAN_AND_VEHICLE';
-  if (isBikeAndPedestrianAccident(p)) return 'BIKE_AND_PEDESTRIAN';
-  if (isSingleBikeAccident(p)) return 'SINGLE_BIKE';
-  if (isBikeOnlyAccident(p)) return 'BIKE_ONLY';
+  for (const { type, matches } of ACCIDENT_TYPE_CLASSIFIERS) {
+    if (matches(p)) {
+      return type;
+    }
+  }
+
   return 'DEFAULT_FILL';
 }
 
 export function getSeverityType(p: AccidentProperties): SeverityType {
-  if (hasSevereInjuries(p)) return 'SEVERE_INJURY';
-  if (hasInjuries(p)) return 'INJURY';
-  return 'NO_INJURY';
+  for (const { type, matches } of SEVERITY_TYPE_CLASSIFIERS) {
+    if (matches(p)) {
+      return type;
+    }
+  }
+
+  return 'LOCAL_NO_INJURY';
+}
+
+export function getStyleFromTypes(
+  accidentType: AccidentType,
+  severityType: SeverityType,
+): L.CircleMarkerOptions {
+  const styleKey = `${accidentType}:${severityType}`;
+  const cachedStyle = STYLE_CACHE.get(styleKey);
+  if (cachedStyle) {
+    return cachedStyle;
+  }
+
+  const style: L.CircleMarkerOptions = {
+    ...BASE_CIRCLE_MARKER_STYLE,
+    radius: getRadius(severityType),
+    fillColor: getColor(accidentType),
+  };
+  STYLE_CACHE.set(styleKey, style);
+  return style;
 }
 
 export function getStyle(
   properties: AccidentProperties,
 ): L.CircleMarkerOptions {
-  return {
-    color: '#000000',
-    stroke: true,
-    weight: 1,
-    radius: getRadius(getSeverityType(properties)),
-    fillColor: getColor(getAccidentType(properties)),
-    opacity: 1,
-    fillOpacity: 0.9,
-  };
+  return getStyleFromTypes(
+    getAccidentType(properties),
+    getSeverityType(properties),
+  );
 }
