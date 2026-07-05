@@ -1,13 +1,13 @@
-import { addTileLayerToMap, initializeMap } from './map/map-utils';
-import { loadGeoPackageFile } from './map/geopackage-layer-utils';
-import { addFilterControlToMap } from './map/layer-control-utils';
+import { addTileLayer, createMap } from './map/map';
+import { loadGeoPackageMarkers } from './map/geopackage-layer';
+import { addPanelControls } from './map/panel-controls';
 import './styles.css';
 
 function main(): void {
-  const map = initializeMap();
-  addTileLayerToMap(map);
-  loadGeoPackageFile(map);
-  addFilterControlToMap(map);
+  const map = createMap();
+  addTileLayer(map);
+  loadGeoPackageMarkers(map);
+  addPanelControls(map);
 }
 
 main();

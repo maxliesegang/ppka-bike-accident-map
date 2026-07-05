@@ -16,24 +16,31 @@ interface SourceState {
   isBatchingRegistration: boolean;
 }
 
-const sourceStateByType: Record<DataSource, SourceState> = {
+const stateBySource: Record<DataSource, SourceState> = {
   local: createSourceState(),
   unfallatlas: createSourceState(),
 };
 
-const selectedAccidentTypes = new Set<AccidentType>(
+// The selection sets are the single source of truth for which accident and
+// severity types are visible. React panels read them through the getters below
+// and re-render via `subscribeToSelection`; they never keep their own copy.
+// Each change swaps in a fresh set so snapshot identity changes for
+// `useSyncExternalStore`.
+let selectedAccidentTypes: ReadonlySet<AccidentType> = new Set(
   ACCIDENT_LEGENDS.map(({ type }) => type),
 );
-const selectedSeverityTypes = new Set<SeverityType>(
-  SEVERITY_LEGENDS.map(({ key }) => key),
+let selectedSeverityTypes: ReadonlySet<SeverityType> = new Set(
+  SEVERITY_LEGENDS.map(({ type }) => type),
 );
 
-export function initializeVisibleLayerGroup(map: L.Map): void {
-  showMarkersForSource(map, 'local');
+const selectionListeners = new Set<() => void>();
+
+export function initializeMarkerLayer(map: L.Map): void {
+  attachMarkersForSource(map, 'local');
 }
 
 export function clearRegisteredMarkers(source: DataSource = 'local'): void {
-  const state = sourceStateByType[source];
+  const state = stateBySource[source];
   state.registeredMarkers.length = 0;
   state.isBatchingRegistration = false;
   state.visibleLayerGroup.clearLayers();
@@ -42,11 +49,11 @@ export function clearRegisteredMarkers(source: DataSource = 'local'): void {
 export function beginMarkerRegistrationBatch(
   source: DataSource = 'local',
 ): void {
-  sourceStateByType[source].isBatchingRegistration = true;
+  stateBySource[source].isBatchingRegistration = true;
 }
 
 export function endMarkerRegistrationBatch(source: DataSource = 'local'): void {
-  const state = sourceStateByType[source];
+  const state = stateBySource[source];
   if (!state.isBatchingRegistration) {
     return;
   }
@@ -61,7 +68,7 @@ export function registerMarker(
   severityType: SeverityType,
   source: DataSource = 'local',
 ): void {
-  const state = sourceStateByType[source];
+  const state = stateBySource[source];
   state.registeredMarkers.push({ marker, accidentType, severityType });
 
   if (
@@ -73,44 +80,79 @@ export function registerMarker(
   }
 }
 
+export function getSelectedAccidentTypes(): ReadonlySet<AccidentType> {
+  return selectedAccidentTypes;
+}
+
+export function getSelectedSeverityTypes(): ReadonlySet<SeverityType> {
+  return selectedSeverityTypes;
+}
+
+export function subscribeToSelection(listener: () => void): () => void {
+  selectionListeners.add(listener);
+  return () => {
+    selectionListeners.delete(listener);
+  };
+}
+
 export function setAccidentTypeSelection(
   accidentType: AccidentType,
   selected: boolean,
 ): void {
-  updateSelection(selectedAccidentTypes, accidentType, selected);
+  const nextSelection = withToggled(
+    selectedAccidentTypes,
+    accidentType,
+    selected,
+  );
+  if (nextSelection === selectedAccidentTypes) {
+    return;
+  }
+
+  selectedAccidentTypes = nextSelection;
   refreshVisibleLayersForAllSources();
+  notifySelectionChanged();
 }
 
 export function setSeverityTypeSelection(
   severityType: SeverityType,
   selected: boolean,
 ): void {
-  updateSelection(selectedSeverityTypes, severityType, selected);
-  refreshVisibleLayersForAllSources();
-}
-
-function updateSelection<T>(set: Set<T>, key: T, selected: boolean): void {
-  if (selected) {
-    set.add(key);
-  } else {
-    set.delete(key);
+  const nextSelection = withToggled(
+    selectedSeverityTypes,
+    severityType,
+    selected,
+  );
+  if (nextSelection === selectedSeverityTypes) {
+    return;
   }
+
+  selectedSeverityTypes = nextSelection;
+  refreshVisibleLayersForAllSources();
+  notifySelectionChanged();
 }
 
-export function showLocalMarkers(map: L.Map): void {
-  showMarkersForSource(map, 'local');
+function withToggled<T>(
+  set: ReadonlySet<T>,
+  key: T,
+  selected: boolean,
+): ReadonlySet<T> {
+  if (set.has(key) === selected) {
+    return set;
+  }
+
+  const next = new Set(set);
+  if (selected) {
+    next.add(key);
+  } else {
+    next.delete(key);
+  }
+  return next;
 }
 
-export function hideLocalMarkers(map: L.Map): void {
-  hideMarkersForSource(map, 'local');
-}
-
-export function showUnfallatlasMarkers(map: L.Map): void {
-  showMarkersForSource(map, 'unfallatlas');
-}
-
-export function hideUnfallatlasMarkers(map: L.Map): void {
-  hideMarkersForSource(map, 'unfallatlas');
+function notifySelectionChanged(): void {
+  for (const listener of selectionListeners) {
+    listener();
+  }
 }
 
 function createSourceState(): SourceState {
@@ -122,16 +164,16 @@ function createSourceState(): SourceState {
   };
 }
 
-function showMarkersForSource(map: L.Map, source: DataSource): void {
-  const state = sourceStateByType[source];
+export function attachMarkersForSource(map: L.Map, source: DataSource): void {
+  const state = stateBySource[source];
   state.map = map;
   if (!map.hasLayer(state.visibleLayerGroup)) {
     state.visibleLayerGroup.addTo(map);
   }
 }
 
-function hideMarkersForSource(map: L.Map, source: DataSource): void {
-  const state = sourceStateByType[source];
+export function detachMarkersForSource(map: L.Map, source: DataSource): void {
+  const state = stateBySource[source];
   if (map.hasLayer(state.visibleLayerGroup)) {
     map.removeLayer(state.visibleLayerGroup);
   }
@@ -147,7 +189,7 @@ function refreshVisibleLayersForAllSources(): void {
 }
 
 function refreshVisibleLayers(source: DataSource): void {
-  const state = sourceStateByType[source];
+  const state = stateBySource[source];
   const { map, visibleLayerGroup, registeredMarkers } = state;
   const wasLayerVisible = map !== null && map.hasLayer(visibleLayerGroup);
 

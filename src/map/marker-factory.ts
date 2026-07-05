@@ -4,11 +4,11 @@ import { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   getAccidentType,
   getSeverityType,
-  getStyleFromTypes,
-} from '../features/accident-feature-utils';
-import { generatePopupContent } from './popup-utils';
+  getMarkerStyle,
+} from '../features/accident-classification';
+import { renderAccidentPopup } from './popup-renderer';
 import { type DataSource } from './data-source-types';
-import { registerMarker } from './layer-filter-utils';
+import { registerMarker } from './marker-store';
 
 export interface CategorizedMarkerData {
   latitude: number;
@@ -61,7 +61,7 @@ export function createAndRegisterCategorizedMarker(
 ): L.CircleMarker {
   const marker = L.circleMarker(
     [markerData.latitude, markerData.longitude],
-    getStyleFromTypes(markerData.accidentType, markerData.severityType),
+    getMarkerStyle(markerData.accidentType, markerData.severityType),
   ) as MarkerWithPopupProperties;
   marker[POPUP_PROPERTIES_SYMBOL] = markerData.popupProperties;
   marker.bindPopup(renderPopupContent);
@@ -92,5 +92,5 @@ function renderPopupContent(layer: L.Layer): string {
   const popupProperties =
     typeof popupSource === 'function' ? popupSource() : popupSource;
 
-  return generatePopupContent(popupProperties);
+  return renderAccidentPopup(popupProperties);
 }

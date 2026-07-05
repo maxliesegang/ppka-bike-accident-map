@@ -1,6 +1,6 @@
 # PPKA Bike Accident Map
 
-This repository showcases an interactive map application built using **TypeScript**, **Leaflet**, and **GeoPackage**, visualizing bike and pedestrian traffic accident data for Karlsruhe and aggregated Unfallatlas OpenData for selectable year ranges.
+This repository showcases an interactive map application built using **TypeScript**, **Vite**, **Leaflet**, and **GeoPackage**, visualizing bike and pedestrian traffic accident data for Karlsruhe and aggregated Unfallatlas OpenData for selectable year ranges.
 
 ## Features
 
@@ -40,6 +40,7 @@ npm ci --omit=optional
 ```
 
 Note: `.npmrc` already configures `omit=optional`, so `npm ci` behaves the same.
+The project uses a Rollup WASM override so Vite works with optional dependencies omitted.
 
 ### 3. Run the Development Server
 
@@ -60,7 +61,13 @@ npm run build
 ```
 
 The bundled files will be available in the `dist` directory.
-This includes `bundle.js`, `main.css`, `index.html`, `sql-wasm.wasm`, the GeoPackage data file, and optional Unfallatlas CSV files from `data/unfallatlas`.
+This includes Vite-generated JavaScript/CSS assets, `index.html`, `sql-wasm.wasm`, the GeoPackage data file, and optional Unfallatlas CSV files from `data/unfallatlas`.
+
+To serve the production build locally:
+
+```bash
+npm run preview
+```
 
 ### 5. Optional: Add Filtered Unfallatlas CSV Data
 
@@ -93,19 +100,21 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
     - `accident-properties.ts` — TypeScript interface for accident feature properties.
     - `accident-styles.ts` — `AccidentType`/`SeverityType` unions, color and radius lookups.
   - **`features/`**: Accident classification logic.
-    - `accident-feature-utils.ts` — determines accident type, severity, and marker style from properties.
+    - `accident-classification.ts` — determines accident type, severity, and marker style from properties.
   - **`map/`**: Map initialization, data loading, layer management, and UI controls.
-    - `map-utils.ts` — Leaflet map creation with Canvas renderer, tile layer setup.
+    - `map.ts` — Leaflet map creation with Canvas renderer, tile layer setup.
     - `geopackage-loader.ts` — fetches and opens GeoPackage files.
-    - `geopackage-layer-utils.ts` — iterates GeoPackage features and creates markers.
+    - `geopackage-layer.ts` — iterates GeoPackage features and creates markers.
     - `unfallatlas-loader.ts` — parses yearly Unfallatlas CSV files and maps rows to existing accident/severity categories.
     - `unfallatlas-layer.ts` — lazy-loads and toggles the Unfallatlas marker layer.
-    - `data-source-utils.ts` — toggles between local and Unfallatlas data sources.
-    - `layer-creator.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
-    - `layer-filter-utils.ts` — manages marker visibility based on selected accident/severity filters.
-    - `layer-control-utils.ts` — custom Leaflet control with grouped, collapsible filter panel.
-    - `popup-utils.ts` — generates HTML popup content for marker click.
-- **`webpack.config.js`**: Webpack config for bundling/dev server and generating `unfallatlas/manifest.json` from `data/unfallatlas`.
+    - `data-source-store.ts` — toggles between local and Unfallatlas data sources.
+    - `marker-factory.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
+    - `marker-store.ts` — manages marker visibility based on selected accident/severity filters.
+    - `panel-controls.ts` — attaches custom Leaflet controls for React-rendered panels.
+    - `popup-renderer.tsx` — renders React popup content for marker clicks.
+  - **`ui/`**: React controls, panels, and popup components used inside Leaflet controls/popups.
+- **`index.html`**: Vite HTML entry point.
+- **`vite.config.mjs`**: Vite config for bundling/dev server, local data assets, Node-module shims for the GeoPackage browser bundle, and `unfallatlas/manifest.json` generation.
 - **`scripts/extract-unfallatlas-bundesland.mjs`**: Streams raw Unfallatlas CSVs and writes filtered files for a selected `ULAND` code.
 - **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Geospatial accident data (must be in root).
 
@@ -114,7 +123,7 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
 - **TypeScript**: Ensures type safety and structured code.
 - **Leaflet**: Lightweight JavaScript library for interactive maps.
 - **GeoPackage**: Used for handling local geospatial data files efficiently.
-- **Webpack**: Bundles the project for development and production.
+- **Vite**: Bundles the project for development and production.
 - **ESLint & Prettier**: Enforces coding standards and automatic formatting.
 
 ## How the Application Works

@@ -10,7 +10,7 @@ export const TILE_LAYER_ATTRIBUTION =
 
 // Unfallatlas CSV configuration
 // Used as fallback when manifest discovery fails.
-export const UNFALLATLAS_SELECTED_YEARS = [2022, 2023, 2024] as const;
+export const UNFALLATLAS_FALLBACK_YEARS = [2022, 2023, 2024] as const;
 export const UNFALLATLAS_MANIFEST_FILE = 'unfallatlas/manifest.json';
 export const UNFALLATLAS_CSV_PATH_TEMPLATE = 'unfallatlas/opendata{year}.csv';
 export const UNFALLATLAS_CSV_PATH_TEMPLATES = [
@@ -39,34 +39,34 @@ export const ACCIDENT_LEGENDS: { type: AccidentType; description: string }[] = [
   { type: 'BIKE_AND_PEDESTRIAN', description: 'Fahrrad- und Fußgängerunfall' },
   { type: 'SINGLE_BIKE', description: 'Unfall nur mit Fahrrädern' },
   { type: 'BIKE_ONLY', description: 'Fahrradunfall ohne Beteiligte' },
-  { type: 'DEFAULT_FILL', description: 'Unbekannter Unfalltyp' },
+  { type: 'UNKNOWN', description: 'Unbekannter Unfalltyp' },
 ];
 
 export const LOCAL_SEVERITY_LEGENDS: {
-  key: SeverityType;
+  type: SeverityType;
   description: string;
 }[] = [
-  { key: 'LOCAL_SEVERE_INJURY', description: 'Schwerverletzungen' },
-  { key: 'LOCAL_INJURY', description: 'Verletzungen' },
-  { key: 'LOCAL_NO_INJURY', description: 'Keine Verletzungen' },
+  { type: 'LOCAL_SEVERE_INJURY', description: 'Schwerverletzungen' },
+  { type: 'LOCAL_INJURY', description: 'Verletzungen' },
+  { type: 'LOCAL_NO_INJURY', description: 'Keine Verletzungen' },
 ];
 
 export const UNFALLATLAS_SEVERITY_LEGENDS: {
-  key: SeverityType;
+  type: SeverityType;
   description: string;
 }[] = [
-  { key: 'UNFALLATLAS_FATALITY', description: 'Kategorie 1: Mit Getöteten' },
+  { type: 'UNFALLATLAS_FATALITY', description: 'Kategorie 1: Mit Getöteten' },
   {
-    key: 'UNFALLATLAS_SEVERE_INJURY',
+    type: 'UNFALLATLAS_SEVERE_INJURY',
     description: 'Kategorie 2: Mit Schwerverletzten',
   },
   {
-    key: 'UNFALLATLAS_LIGHT_INJURY',
+    type: 'UNFALLATLAS_LIGHT_INJURY',
     description: 'Kategorie 3: Mit Leichtverletzten',
   },
 ];
 
-export const SEVERITY_LEGENDS: { key: SeverityType; description: string }[] = [
+export const SEVERITY_LEGENDS: { type: SeverityType; description: string }[] = [
   ...LOCAL_SEVERITY_LEGENDS,
   ...UNFALLATLAS_SEVERITY_LEGENDS,
 ];

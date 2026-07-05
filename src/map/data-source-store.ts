@@ -2,7 +2,7 @@ import {
   showUnfallatlasLayer,
   hideUnfallatlasLayer,
 } from './unfallatlas-layer';
-import { showLocalMarkers, hideLocalMarkers } from './layer-filter-utils';
+import { attachMarkersForSource, detachMarkersForSource } from './marker-store';
 import { type DataSource } from './data-source-types';
 
 let activeSource: DataSource = 'local';
@@ -12,8 +12,8 @@ const sourceVisibilityActions: Record<
   { show: (map: L.Map) => void; hide: (map: L.Map) => void }
 > = {
   local: {
-    show: showLocalMarkers,
-    hide: hideLocalMarkers,
+    show: (map) => attachMarkersForSource(map, 'local'),
+    hide: (map) => detachMarkersForSource(map, 'local'),
   },
   unfallatlas: {
     show: showUnfallatlasLayer,

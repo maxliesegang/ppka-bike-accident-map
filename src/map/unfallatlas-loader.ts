@@ -1,14 +1,14 @@
 import {
   UNFALLATLAS_CSV_PATH_TEMPLATES,
   UNFALLATLAS_MANIFEST_FILE,
-  UNFALLATLAS_SELECTED_YEARS,
+  UNFALLATLAS_FALLBACK_YEARS,
   UNFALLATLAS_SOURCE_NAME,
 } from '../constants';
 import { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   CategorizedMarkerData,
   createAndRegisterCategorizedMarker,
-} from './layer-creator';
+} from './marker-factory';
 
 const REQUIRED_COLUMNS = [
   'UJAHR',
@@ -63,6 +63,18 @@ interface UnfallatlasManifest {
   pathsByYear: Record<number, string[]>;
 }
 
+type YearCsvLoadResult =
+  | {
+      status: 'loaded';
+      year: number;
+      csvText: string;
+    }
+  | {
+      status: 'failed';
+      year: number;
+      error: unknown;
+    };
+
 type UnfallatlasSeverityType = Extract<
   SeverityType,
   | 'UNFALLATLAS_FATALITY'
@@ -100,7 +112,7 @@ async function resolveAvailableUnfallatlasYears(): Promise<number[]> {
     return manifest.years;
   }
 
-  return normalizeYears([...UNFALLATLAS_SELECTED_YEARS]);
+  return normalizeYears([...UNFALLATLAS_FALLBACK_YEARS]);
 }
 
 async function loadManifest(): Promise<UnfallatlasManifest> {
@@ -194,36 +206,28 @@ export async function loadUnfallatlasMarkersForYears(
   let loadedYears = 0;
   let failedYears = 0;
 
-  const fetchResults = await Promise.all(
-    years.map(async (year) => {
-      try {
-        const csvText = await loadYearCsvText(year);
-        return { year, csvText } as const;
-      } catch (error: unknown) {
-        return { year, error } as const;
-      }
-    }),
-  );
+  const fetchResults = await Promise.all(years.map(loadYearCsvSafely));
 
   for (const result of fetchResults) {
-    if ('error' in result) {
+    if (result.status === 'failed') {
       failedYears += 1;
-      console.warn(
-        `Failed to load Unfallatlas CSV for ${result.year}:`,
-        result.error,
-      );
+      warnYearFailure('load', result);
       continue;
     }
 
     try {
-      markerCount += await parseAndRegisterRows(result.csvText, result.year);
+      markerCount += await parseAndRegisterRows(
+        result.csvText,
+        result.year,
+      );
       loadedYears += 1;
     } catch (error: unknown) {
       failedYears += 1;
-      console.warn(
-        `Failed to parse Unfallatlas CSV for ${result.year}:`,
+      warnYearFailure('parse', {
+        status: 'failed',
+        year: result.year,
         error,
-      );
+      });
     }
   }
 
@@ -234,9 +238,30 @@ export async function loadUnfallatlasMarkersForYears(
   };
 }
 
-export async function loadUnfallatlasMarkers(): Promise<UnfallatlasLoadResult> {
-  const years = await getAvailableUnfallatlasYears();
-  return loadUnfallatlasMarkersForYears(years);
+async function loadYearCsvSafely(year: number): Promise<YearCsvLoadResult> {
+  try {
+    return {
+      status: 'loaded',
+      year,
+      csvText: await loadYearCsvText(year),
+    };
+  } catch (error: unknown) {
+    return {
+      status: 'failed',
+      year,
+      error,
+    };
+  }
+}
+
+function warnYearFailure(
+  phase: 'load' | 'parse',
+  result: Extract<YearCsvLoadResult, { status: 'failed' }>,
+): void {
+  console.warn(
+    `Failed to ${phase} Unfallatlas CSV for ${result.year}:`,
+    result.error,
+  );
 }
 
 async function loadYearCsvText(year: number): Promise<string> {
@@ -425,7 +450,7 @@ function mapAccidentType({
     // The Unfallatlas source does not expose participant counts for cyclists.
     return 'SINGLE_BIKE';
   }
-  return 'DEFAULT_FILL';
+  return 'UNKNOWN';
 }
 
 function mapSeverityType(

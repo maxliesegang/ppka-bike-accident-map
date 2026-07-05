@@ -4,12 +4,12 @@ Guidance for contributors and coding agents working in this repository.
 
 ## Scope
 
-- TypeScript + Webpack + Leaflet browser app.
+- TypeScript + Vite + Leaflet browser app.
 - Entry point: `src/index.ts`.
-- GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer-utils.ts`.
+- GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer.ts`.
 - Style/type definitions: `src/data/accident-styles.ts` — single source of truth for `AccidentType`, `SeverityType`, colors, and radii.
-- Filter UI: `src/map/layer-control-utils.ts` — custom Leaflet control (not `L.control.layers`).
-- Filter state: `src/map/layer-filter-utils.ts` — manages marker visibility via `Set`-based selection tracking.
+- Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom Leaflet controls with React-rendered panels (not `L.control.layers`).
+- Filter state: `src/map/marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
 
 ## Architecture Notes
 
@@ -37,11 +37,12 @@ npm run build
 
 - Prefer latest stable dependencies, but:
   - Do not upgrade to ESLint 10 until `typescript-eslint` supports it.
-- Keep `node-polyfill-webpack-plugin` removed unless strongly justified.
-- Keep `webpack.config.js` `output.clean = true`.
+  - Keep Vite on a version that works with `.npmrc` `omit=optional`; Vite 7 uses the `rollup` override to `@rollup/wasm-node`, while Vite 8's native Rolldown binding currently conflicts with that install policy.
+- Keep browser Node.js polyfills absent unless strongly justified.
 - Keep local GeoPackage WASM loading intact:
   - `src/constants.ts` must expose `GEOPACKAGE_WASM_FILE = 'sql-wasm.wasm'`.
-  - `webpack.config.js` must copy `node_modules/@ngageoint/geopackage/dist/sql-wasm.wasm` into `dist`.
+  - `vite.config.mjs` must copy `node_modules/@ngageoint/geopackage/dist/sql-wasm.wasm` into `dist`.
+  - `vite.config.mjs` must generate and serve `unfallatlas/manifest.json`.
   - No remote CDN for WASM.
 
 ## Security Expectations

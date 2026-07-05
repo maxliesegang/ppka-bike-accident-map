@@ -4,7 +4,7 @@ export type AccidentType =
   | 'BIKE_AND_PEDESTRIAN'
   | 'SINGLE_BIKE'
   | 'BIKE_ONLY'
-  | 'DEFAULT_FILL';
+  | 'UNKNOWN';
 
 export type SeverityType =
   | 'LOCAL_SEVERE_INJURY'
@@ -20,7 +20,7 @@ const ACCIDENT_COLORS: Record<AccidentType, string> = {
   BIKE_AND_PEDESTRIAN: '#FFDC00',
   SINGLE_BIKE: '#0074D9',
   BIKE_ONLY: '#B10DC9',
-  DEFAULT_FILL: '#0FF',
+  UNKNOWN: '#0FF',
 } as const;
 
 const SEVERITY_RADII: Record<SeverityType, number> = {
@@ -32,10 +32,10 @@ const SEVERITY_RADII: Record<SeverityType, number> = {
   UNFALLATLAS_LIGHT_INJURY: 4,
 } as const;
 
-export function getColor(type: AccidentType): string {
+export function getAccidentColor(type: AccidentType): string {
   return ACCIDENT_COLORS[type];
 }
 
-export function getRadius(type: SeverityType): number {
+export function getSeverityRadius(type: SeverityType): number {
   return SEVERITY_RADII[type];
 }

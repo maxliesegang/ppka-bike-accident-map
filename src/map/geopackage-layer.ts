@@ -2,21 +2,21 @@ import { GeoPackage } from '@ngageoint/geopackage';
 import * as L from 'leaflet';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
-import { createAndRegisterMarker } from './layer-creator';
+import { createAndRegisterMarker } from './marker-factory';
 import {
   beginMarkerRegistrationBatch,
   clearRegisteredMarkers,
   endMarkerRegistrationBatch,
-  initializeVisibleLayerGroup,
-} from './layer-filter-utils';
+  initializeMarkerLayer,
+} from './marker-store';
 
-export async function loadGeoPackageFile(map: L.Map): Promise<void> {
+export async function loadGeoPackageMarkers(map: L.Map): Promise<void> {
   try {
-    initializeVisibleLayerGroup(map);
+    initializeMarkerLayer(map);
     clearRegisteredMarkers('local');
 
     const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
-    const { addedCount, skippedCount } = addGeoPackageLayersToMap(geoPackage);
+    const { addedCount, skippedCount } = registerGeoPackageMarkers(geoPackage);
     if (skippedCount > 0) {
       console.warn(
         `Skipped ${skippedCount} GeoPackage features without valid point geometry.`,
@@ -28,7 +28,7 @@ export async function loadGeoPackageFile(map: L.Map): Promise<void> {
   }
 }
 
-function addGeoPackageLayersToMap(geoPackage: GeoPackage): {
+function registerGeoPackageMarkers(geoPackage: GeoPackage): {
   addedCount: number;
   skippedCount: number;
 } {

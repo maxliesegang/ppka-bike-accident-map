@@ -1,8 +1,8 @@
 import { AccidentProperties } from '../data/accident-properties';
 import {
   AccidentType,
-  getColor,
-  getRadius,
+  getAccidentColor,
+  getSeverityRadius,
   SeverityType,
 } from '../data/accident-styles';
 
@@ -75,7 +75,7 @@ export function getAccidentType(p: AccidentProperties): AccidentType {
     }
   }
 
-  return 'DEFAULT_FILL';
+  return 'UNKNOWN';
 }
 
 export function getSeverityType(p: AccidentProperties): SeverityType {
@@ -88,7 +88,7 @@ export function getSeverityType(p: AccidentProperties): SeverityType {
   return 'LOCAL_NO_INJURY';
 }
 
-export function getStyleFromTypes(
+export function getMarkerStyle(
   accidentType: AccidentType,
   severityType: SeverityType,
 ): L.CircleMarkerOptions {
@@ -100,18 +100,9 @@ export function getStyleFromTypes(
 
   const style: L.CircleMarkerOptions = {
     ...BASE_CIRCLE_MARKER_STYLE,
-    radius: getRadius(severityType),
-    fillColor: getColor(accidentType),
+    radius: getSeverityRadius(severityType),
+    fillColor: getAccidentColor(accidentType),
   };
   STYLE_CACHE.set(styleKey, style);
   return style;
-}
-
-export function getStyle(
-  properties: AccidentProperties,
-): L.CircleMarkerOptions {
-  return getStyleFromTypes(
-    getAccidentType(properties),
-    getSeverityType(properties),
-  );
 }

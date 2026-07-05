@@ -3,9 +3,9 @@ import {
   beginMarkerRegistrationBatch,
   clearRegisteredMarkers,
   endMarkerRegistrationBatch,
-  hideUnfallatlasMarkers,
-  showUnfallatlasMarkers,
-} from './layer-filter-utils';
+  attachMarkersForSource,
+  detachMarkersForSource,
+} from './marker-store';
 import {
   getAvailableUnfallatlasYears,
   loadUnfallatlasMarkersForYears,
@@ -31,6 +31,8 @@ const state: UnfallatlasLayerState = {
   hasPendingReload: false,
 };
 
+const yearSelectionListeners = new Set<() => void>();
+
 export async function fetchUnfallatlasAvailableYears(): Promise<number[]> {
   return getAvailableUnfallatlasYears();
 }
@@ -39,17 +41,17 @@ export function getSelectedUnfallatlasYears(): readonly number[] {
   return state.selectedYears;
 }
 
+export function subscribeToUnfallatlasYears(listener: () => void): () => void {
+  yearSelectionListeners.add(listener);
+  return () => {
+    yearSelectionListeners.delete(listener);
+  };
+}
+
 export function setUnfallatlasYears(years: readonly number[]): void {
-  const normalizedYears = normalizeYears(years);
-  if (areYearsEqual(state.selectedYears, normalizedYears)) {
-    return;
-  }
+  const hasSelectionChanged = applySelectedYears(years, true);
 
-  state.selectedYears = normalizedYears;
-  state.hasInitializedSelection = true;
-  state.loadedYearsKey = null;
-
-  if (state.isVisible) {
+  if (state.isVisible && hasSelectionChanged) {
     triggerLoad();
   }
 }
@@ -70,14 +72,14 @@ export function setUnfallatlasYearSelection(
 
 export function showUnfallatlasLayer(map: L.Map): void {
   state.isVisible = true;
-  showUnfallatlasMarkers(map);
+  attachMarkersForSource(map, 'unfallatlas');
   triggerLoad();
 }
 
 export function hideUnfallatlasLayer(map: L.Map): void {
   state.isVisible = false;
   state.hasPendingReload = false;
-  hideUnfallatlasMarkers(map);
+  detachMarkersForSource(map, 'unfallatlas');
 }
 
 function triggerLoad(): void {
@@ -155,10 +157,12 @@ async function ensureSelectionInitialized(): Promise<void> {
   if (!state.selectionInitPromise) {
     state.selectionInitPromise = fetchUnfallatlasAvailableYears()
       .then((availableYears) => {
-        if (state.selectedYears.length === 0) {
-          state.selectedYears = normalizeYears(availableYears);
-        }
-        state.hasInitializedSelection = true;
+        applySelectedYears(
+          !state.hasInitializedSelection && state.selectedYears.length === 0
+            ? availableYears
+            : state.selectedYears,
+          true,
+        );
       })
       .finally(() => {
         state.selectionInitPromise = null;
@@ -166,6 +170,40 @@ async function ensureSelectionInitialized(): Promise<void> {
   }
 
   return state.selectionInitPromise;
+}
+
+function applySelectedYears(
+  years: readonly number[],
+  markInitialized: boolean,
+): boolean {
+  const normalizedYears = normalizeYears(years);
+  const hasSelectionChanged = !areYearsEqual(
+    state.selectedYears,
+    normalizedYears,
+  );
+  const hasInitializationChanged =
+    markInitialized && !state.hasInitializedSelection;
+
+  if (!hasSelectionChanged && !hasInitializationChanged) {
+    return false;
+  }
+
+  state.selectedYears = normalizedYears;
+  if (markInitialized) {
+    state.hasInitializedSelection = true;
+  }
+  if (hasSelectionChanged) {
+    state.loadedYearsKey = null;
+  }
+  notifyYearSelectionChanged();
+
+  return hasSelectionChanged;
+}
+
+function notifyYearSelectionChanged(): void {
+  for (const listener of yearSelectionListeners) {
+    listener();
+  }
 }
 
 function normalizeYears(years: readonly number[]): number[] {

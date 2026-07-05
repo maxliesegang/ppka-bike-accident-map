@@ -1,0 +1,157 @@
+/*
+ * Layout for the two Kern UX map panels: the filter (top-right) and the legend
+ * (bottom-left). Component look-and-feel comes from the Kern UX kit; this file
+ * only handles the floating card frame, section spacing, and the legend
+ * colour/size swatches that Kern does not provide. All values reference Kern
+ * design tokens so the panels stay visually consistent with the kit.
+ */
+
+/* Size the Leaflet control box to its content with a viewport cap, so it stays
+ * anchored to its corner whether it holds the wide panel or the compact toggle.
+ * Without the width rule, Leaflet's nested auto-widths collapse the box to the
+ * longest word and the Kern button (min-width: fit-content) overflows the
+ * viewport. The margin overrides Leaflet's default 10px so the card floats with
+ * a consistent gap from the map edges on every side. */
+.cp-control {
+  width: max-content;
+  max-width: calc(100vw - 28px);
+  margin: var(--kern-metric-space-default, 16px);
+}
+
+.cp {
+  font-family: var(--kern-typography-font-family-fira-sans, 'Fira Sans', sans-serif);
+  color: var(--kern-color-layout-text-default, #1d2a37);
+}
+
+.cp:not(.cp--collapsed) {
+  /* Size to content so the legend labels never wrap to a second line; the
+   * viewport cap keeps it on-screen and paragraph hints wrap via their own
+   * max-width below. */
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  background: var(--kern-color-layout-background-default, #ffffff);
+  border: var(--kern-metric-border-width-default, 1px) solid
+    var(--kern-color-layout-border, #d9e1e8);
+  border-radius: var(--kern-metric-border-radius-large, 8px);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.08),
+    0 8px 24px rgba(16, 24, 40, 0.12);
+  overflow: hidden;
+}
+
+/* Give the collapsed toggle the same elevation as the open card so it reads as
+ * the same floating surface. */
+.cp--collapsed .kern-btn {
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.08),
+    0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+.cp__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kern-metric-space-small, 8px);
+  /* Left padding matches the body so the title lines up with the content
+   * beneath it; the close button sits tight to the right corner. */
+  padding: var(--kern-metric-space-small, 8px) var(--kern-metric-space-small, 8px)
+    var(--kern-metric-space-small, 8px) var(--kern-metric-space-default, 16px);
+  background: var(--kern-color-layout-background-hued, #f6f9fc);
+  border-bottom: 1px solid var(--kern-color-layout-border, #d9e1e8);
+}
+
+.cp__titles {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+/* Mute the eyebrow so the title reads as the primary line of the header. */
+.cp__header .kern-preline {
+  color: var(--kern-color-layout-text-muted, #5a6978);
+}
+
+.cp__body {
+  display: grid;
+  gap: var(--kern-metric-space-small, 8px);
+  padding: var(--kern-metric-space-small, 8px)
+    var(--kern-metric-space-default, 16px);
+  /* Never let a panel run off-screen: cap to the viewport minus the card's
+   * margins/header and scroll the overflow. Short panels stay unscrolled. */
+  max-height: calc(100dvh - 132px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Cap the width paragraph hints contribute to the card's max-content sizing so
+ * a long sentence wraps instead of stretching the whole panel wide. */
+.cp__hint {
+  margin: 0;
+  max-width: 34ch;
+}
+
+.cp__row {
+  display: flex;
+  align-items: center;
+  gap: var(--kern-metric-space-small, 8px);
+  /* Keep each legend label on a single line; the card widens to fit it. */
+  white-space: nowrap;
+}
+
+.cp__swatch {
+  flex: none;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--kern-metric-border-radius-circle, 50%);
+  border: 1px solid rgba(0, 0, 0, 0.28);
+}
+
+/* Fixed-width slot so the variable severity dot never shifts the label. */
+.cp__swatch-wrap {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.cp__swatch--dark {
+  background: var(--kern-color-layout-text-default, #2e3f55);
+  border-color: var(--kern-color-layout-text-default, #2e3f55);
+}
+
+.cp__year-actions {
+  display: flex;
+  gap: var(--kern-metric-space-x-small, 4px);
+  margin-bottom: var(--kern-metric-space-small, 8px);
+}
+
+.cp__year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--kern-metric-space-small, 8px);
+  margin-bottom: var(--kern-metric-space-x-small, 4px);
+}
+
+.cp__footer {
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media (max-width: 600px) {
+  .cp__year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cp__body {
+    max-height: calc(72dvh - 40px);
+  }
+
+  /* On narrow phones the card can't grow wide enough to fit long labels, so
+   * allow them to wrap rather than clip against the viewport cap. */
+  .cp__row {
+    white-space: normal;
+  }
+}
