@@ -9,17 +9,17 @@ import {
   KernRadioGroup,
   KernText,
 } from '@kern-ux-annex/kern-react-kit';
-import { type DataSource } from '../../map/data-source-types';
+import { isDataSourceId } from '../../map/data-source-types';
 import {
-  getActiveDataSource,
-  onDataSourceChange,
-  setDataSource,
+  getSelectedDataSourceId,
+  subscribeToDataSourceId,
+  setSelectedDataSourceId,
 } from '../../map/data-source-store';
 import {
   fetchUnfallatlasAvailableYears,
   getSelectedUnfallatlasYears,
-  setUnfallatlasYears,
-  setUnfallatlasYearSelection,
+  setSelectedUnfallatlasYears,
+  setUnfallatlasYearSelected,
   subscribeToUnfallatlasYears,
 } from '../../map/unfallatlas-layer';
 import { PanelFrame } from './PanelFrame';
@@ -28,7 +28,7 @@ const FRAG_DEN_STAAT_REQUEST_URL =
   'https://fragdenstaat.de/anfrage/rohdaten-zu-verkehrsunfaellen-seit-2017/';
 const GITHUB_URL = 'https://github.com/maxliesegang/ppka-bike-accident-map';
 
-const SOURCE_ITEMS = [
+const DATA_SOURCE_OPTIONS = [
   { value: 'local', label: 'FragDenStaat Anfrage (Karlsruhe)' },
   { value: 'unfallatlas', label: 'Unfallatlas (bundesweit)' },
 ];
@@ -39,7 +39,10 @@ const SOURCE_ITEMS = [
  * the bottom-left legend panel.
  */
 export function FilterPanel({ map }: { map: L.Map }) {
-  const source = useSyncExternalStore(onDataSourceChange, getActiveDataSource);
+  const selectedDataSourceId = useSyncExternalStore(
+    subscribeToDataSourceId,
+    getSelectedDataSourceId,
+  );
   const selectedYears = useSyncExternalStore(
     subscribeToUnfallatlasYears,
     getSelectedUnfallatlasYears,
@@ -58,7 +61,7 @@ export function FilterPanel({ map }: { map: L.Map }) {
         if (cancelled) return;
         setAvailableYears(years);
         if (years.length > 0 && getSelectedUnfallatlasYears().length === 0) {
-          setUnfallatlasYears(years);
+          setSelectedUnfallatlasYears(years);
         }
         setYearsMessage(
           years.length === 0 ? 'Keine Unfallatlas-Jahre gefunden.' : '',
@@ -75,11 +78,17 @@ export function FilterPanel({ map }: { map: L.Map }) {
   }, []);
 
   const toggleYear = (year: number, selected: boolean) => {
-    setUnfallatlasYearSelection(year, selected);
+    setUnfallatlasYearSelected(year, selected);
   };
 
   const applyYears = (years: readonly number[]) => {
-    setUnfallatlasYears(years);
+    setSelectedUnfallatlasYears(years);
+  };
+
+  const changeSelectedDataSource = (value: string) => {
+    if (isDataSourceId(value)) {
+      setSelectedDataSourceId(value, map);
+    }
   };
 
   return (
@@ -93,11 +102,11 @@ export function FilterPanel({ map }: { map: L.Map }) {
       <KernRadioGroup
         name="datasource"
         legend="Datenquelle"
-        items={SOURCE_ITEMS}
-        selected={source}
-        onChange={(value) => setDataSource(value as DataSource, map)}
+        items={DATA_SOURCE_OPTIONS}
+        selected={selectedDataSourceId}
+        onChange={changeSelectedDataSource}
       />
-      {source === 'local' ? (
+      {selectedDataSourceId === 'local' ? (
         <KernLink
           href={FRAG_DEN_STAAT_REQUEST_URL}
           label="Zur FragDenStaat-Anfrage"
@@ -111,7 +120,7 @@ export function FilterPanel({ map }: { map: L.Map }) {
         </KernText>
       )}
 
-      {source === 'unfallatlas' && (
+      {selectedDataSourceId === 'unfallatlas' && (
         <>
           <KernDivider spacing="small" />
           <KernFieldset label="Jahre">

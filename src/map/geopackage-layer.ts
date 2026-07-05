@@ -2,18 +2,18 @@ import { GeoPackage } from '@ngageoint/geopackage';
 import * as L from 'leaflet';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
-import { createAndRegisterMarker } from './marker-factory';
+import { createAndRegisterGeoPackageAccidentMarker } from './marker-factory';
 import {
-  beginMarkerRegistrationBatch,
-  clearRegisteredMarkers,
-  endMarkerRegistrationBatch,
-  initializeMarkerLayer,
+  beginAccidentMarkerBatch,
+  clearAccidentMarkersForSource,
+  endAccidentMarkerBatch,
+  attachLocalAccidentMarkers,
 } from './marker-store';
 
 export async function loadGeoPackageMarkers(map: L.Map): Promise<void> {
   try {
-    initializeMarkerLayer(map);
-    clearRegisteredMarkers('local');
+    attachLocalAccidentMarkers(map);
+    clearAccidentMarkersForSource('local');
 
     const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
     const { addedCount, skippedCount } = registerGeoPackageMarkers(geoPackage);
@@ -35,12 +35,12 @@ function registerGeoPackageMarkers(geoPackage: GeoPackage): {
   let addedCount = 0;
   let skippedCount = 0;
 
-  beginMarkerRegistrationBatch('local');
+  beginAccidentMarkerBatch('local');
   try {
     for (const feature of geoPackage.iterateGeoJSONFeatures(
       GEOPACKAGE_LAYER_NAME,
     )) {
-      if (createAndRegisterMarker(feature) === null) {
+      if (createAndRegisterGeoPackageAccidentMarker(feature) === null) {
         skippedCount += 1;
         continue;
       }
@@ -48,7 +48,7 @@ function registerGeoPackageMarkers(geoPackage: GeoPackage): {
       addedCount += 1;
     }
   } finally {
-    endMarkerRegistrationBatch('local');
+    endAccidentMarkerBatch('local');
   }
 
   return { addedCount, skippedCount };

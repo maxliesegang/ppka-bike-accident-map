@@ -6,8 +6,8 @@ import {
 } from '../constants';
 import { AccidentType, SeverityType } from '../data/accident-styles';
 import {
-  CategorizedMarkerData,
-  createAndRegisterCategorizedMarker,
+  AccidentMarkerData,
+  createAndRegisterAccidentMarker,
 } from './marker-factory';
 
 const REQUIRED_COLUMNS = [
@@ -216,10 +216,7 @@ export async function loadUnfallatlasMarkersForYears(
     }
 
     try {
-      markerCount += await parseAndRegisterRows(
-        result.csvText,
-        result.year,
-      );
+      markerCount += await parseAndRegisterRows(result.csvText, result.year);
       loadedYears += 1;
     } catch (error: unknown) {
       failedYears += 1;
@@ -312,12 +309,12 @@ async function parseAndRegisterRows(
     }
     parsedRowCount += 1;
 
-    const markerData = mapToMarkerData(values, columnIndex, fallbackYear);
-    if (!markerData) {
+    const accidentMarkerData = mapToMarkerData(values, columnIndex, fallbackYear);
+    if (!accidentMarkerData) {
       continue;
     }
 
-    createAndRegisterCategorizedMarker(markerData, 'unfallatlas');
+    createAndRegisterAccidentMarker(accidentMarkerData, 'unfallatlas');
     markerCount += 1;
 
     if (parsedRowCount % REGISTRATION_YIELD_INTERVAL === 0) {
@@ -375,7 +372,7 @@ function mapToMarkerData(
   values: string[],
   columnIndex: ColumnIndexMap,
   fallbackYear: number,
-): CategorizedMarkerData | null {
+): AccidentMarkerData | null {
   const longitude = parseCoordinate(values[columnIndex.XGCSWGS84]);
   const latitude = parseCoordinate(values[columnIndex.YGCSWGS84]);
   if (latitude === null || longitude === null) {

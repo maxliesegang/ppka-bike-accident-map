@@ -2,18 +2,21 @@ import {
   showUnfallatlasLayer,
   hideUnfallatlasLayer,
 } from './unfallatlas-layer';
-import { attachMarkersForSource, detachMarkersForSource } from './marker-store';
-import { type DataSource } from './data-source-types';
+import {
+  attachAccidentMarkersForSource,
+  detachAccidentMarkersForSource,
+} from './marker-store';
+import { type DataSourceId } from './data-source-types';
 
-let activeSource: DataSource = 'local';
-const changeListeners = new Set<(source: DataSource) => void>();
-const sourceVisibilityActions: Record<
-  DataSource,
+let selectedDataSourceId: DataSourceId = 'local';
+const dataSourceListeners = new Set<(dataSourceId: DataSourceId) => void>();
+const dataSourceVisibilityActions: Record<
+  DataSourceId,
   { show: (map: L.Map) => void; hide: (map: L.Map) => void }
 > = {
   local: {
-    show: (map) => attachMarkersForSource(map, 'local'),
-    hide: (map) => detachMarkersForSource(map, 'local'),
+    show: (map) => attachAccidentMarkersForSource(map, 'local'),
+    hide: (map) => detachAccidentMarkersForSource(map, 'local'),
   },
   unfallatlas: {
     show: showUnfallatlasLayer,
@@ -21,30 +24,33 @@ const sourceVisibilityActions: Record<
   },
 };
 
-export function getActiveDataSource(): DataSource {
-  return activeSource;
+export function getSelectedDataSourceId(): DataSourceId {
+  return selectedDataSourceId;
 }
 
-export function setDataSource(source: DataSource, map: L.Map): void {
-  if (source === activeSource) {
+export function setSelectedDataSourceId(
+  dataSourceId: DataSourceId,
+  map: L.Map,
+): void {
+  if (dataSourceId === selectedDataSourceId) {
     return;
   }
 
-  const previousSource = activeSource;
-  sourceVisibilityActions[previousSource].hide(map);
-  sourceVisibilityActions[source].show(map);
-  activeSource = source;
+  const previousDataSourceId = selectedDataSourceId;
+  dataSourceVisibilityActions[previousDataSourceId].hide(map);
+  dataSourceVisibilityActions[dataSourceId].show(map);
+  selectedDataSourceId = dataSourceId;
 
-  for (const listener of changeListeners) {
-    listener(activeSource);
+  for (const listener of dataSourceListeners) {
+    listener(selectedDataSourceId);
   }
 }
 
-export function onDataSourceChange(
-  listener: (source: DataSource) => void,
+export function subscribeToDataSourceId(
+  listener: (dataSourceId: DataSourceId) => void,
 ): () => void {
-  changeListeners.add(listener);
+  dataSourceListeners.add(listener);
   return () => {
-    changeListeners.delete(listener);
+    dataSourceListeners.delete(listener);
   };
 }

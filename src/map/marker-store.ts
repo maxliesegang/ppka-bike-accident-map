@@ -1,134 +1,120 @@
 import * as L from 'leaflet';
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
 import { AccidentType, SeverityType } from '../data/accident-styles';
-import { DATA_SOURCES, type DataSource } from './data-source-types';
+import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
+import { AccidentMarkerSourceState } from './accident-marker-source-state';
 
-interface CategorizedMarker {
-  marker: L.CircleMarker;
-  accidentType: AccidentType;
-  severityType: SeverityType;
-}
-
-interface SourceState {
-  registeredMarkers: CategorizedMarker[];
-  visibleLayerGroup: L.LayerGroup;
-  map: L.Map | null;
-  isBatchingRegistration: boolean;
-}
-
-const stateBySource: Record<DataSource, SourceState> = {
-  local: createSourceState(),
-  unfallatlas: createSourceState(),
+const accidentMarkerStateBySource: Record<
+  DataSourceId,
+  AccidentMarkerSourceState
+> = {
+  local: new AccidentMarkerSourceState(),
+  unfallatlas: new AccidentMarkerSourceState(),
 };
 
 // The selection sets are the single source of truth for which accident and
 // severity types are visible. React panels read them through the getters below
-// and re-render via `subscribeToSelection`; they never keep their own copy.
+// and re-render via `subscribeToAccidentMarkerFilters`; they never keep their own copy.
 // Each change swaps in a fresh set so snapshot identity changes for
 // `useSyncExternalStore`.
-let selectedAccidentTypes: ReadonlySet<AccidentType> = new Set(
+let selectedAccidentTypeFilters: ReadonlySet<AccidentType> = new Set(
   ACCIDENT_LEGENDS.map(({ type }) => type),
 );
-let selectedSeverityTypes: ReadonlySet<SeverityType> = new Set(
+let selectedSeverityTypeFilters: ReadonlySet<SeverityType> = new Set(
   SEVERITY_LEGENDS.map(({ type }) => type),
 );
 
-const selectionListeners = new Set<() => void>();
+const accidentMarkerFilterListeners = new Set<() => void>();
 
-export function initializeMarkerLayer(map: L.Map): void {
-  attachMarkersForSource(map, 'local');
+export function attachLocalAccidentMarkers(map: L.Map): void {
+  attachAccidentMarkersForSource(map, 'local');
 }
 
-export function clearRegisteredMarkers(source: DataSource = 'local'): void {
-  const state = stateBySource[source];
-  state.registeredMarkers.length = 0;
-  state.isBatchingRegistration = false;
-  state.visibleLayerGroup.clearLayers();
-}
-
-export function beginMarkerRegistrationBatch(
-  source: DataSource = 'local',
+export function clearAccidentMarkersForSource(
+  dataSourceId: DataSourceId = 'local',
 ): void {
-  stateBySource[source].isBatchingRegistration = true;
+  accidentMarkerStateBySource[dataSourceId].clear();
 }
 
-export function endMarkerRegistrationBatch(source: DataSource = 'local'): void {
-  const state = stateBySource[source];
-  if (!state.isBatchingRegistration) {
-    return;
-  }
-
-  state.isBatchingRegistration = false;
-  refreshVisibleLayers(source);
+export function beginAccidentMarkerBatch(
+  dataSourceId: DataSourceId = 'local',
+): void {
+  accidentMarkerStateBySource[dataSourceId].beginRegistrationBatch();
 }
 
-export function registerMarker(
+export function endAccidentMarkerBatch(
+  dataSourceId: DataSourceId = 'local',
+): void {
+  accidentMarkerStateBySource[dataSourceId].endRegistrationBatch(
+    isMarkerSelected,
+  );
+}
+
+export function registerAccidentMarker(
   marker: L.CircleMarker,
   accidentType: AccidentType,
   severityType: SeverityType,
-  source: DataSource = 'local',
+  dataSourceId: DataSourceId = 'local',
 ): void {
-  const state = stateBySource[source];
-  state.registeredMarkers.push({ marker, accidentType, severityType });
-
-  if (
-    !state.isBatchingRegistration &&
-    selectedAccidentTypes.has(accidentType) &&
-    selectedSeverityTypes.has(severityType)
-  ) {
-    state.visibleLayerGroup.addLayer(marker);
-  }
+  accidentMarkerStateBySource[dataSourceId].registerMarker(
+    marker,
+    accidentType,
+    severityType,
+    isMarkerSelected,
+  );
 }
 
 export function getSelectedAccidentTypes(): ReadonlySet<AccidentType> {
-  return selectedAccidentTypes;
+  return selectedAccidentTypeFilters;
 }
 
 export function getSelectedSeverityTypes(): ReadonlySet<SeverityType> {
-  return selectedSeverityTypes;
+  return selectedSeverityTypeFilters;
 }
 
-export function subscribeToSelection(listener: () => void): () => void {
-  selectionListeners.add(listener);
+export function subscribeToAccidentMarkerFilters(
+  listener: () => void,
+): () => void {
+  accidentMarkerFilterListeners.add(listener);
   return () => {
-    selectionListeners.delete(listener);
+    accidentMarkerFilterListeners.delete(listener);
   };
 }
 
-export function setAccidentTypeSelection(
+export function setAccidentTypeFilterSelected(
   accidentType: AccidentType,
   selected: boolean,
 ): void {
   const nextSelection = withToggled(
-    selectedAccidentTypes,
+    selectedAccidentTypeFilters,
     accidentType,
     selected,
   );
-  if (nextSelection === selectedAccidentTypes) {
+  if (nextSelection === selectedAccidentTypeFilters) {
     return;
   }
 
-  selectedAccidentTypes = nextSelection;
-  refreshVisibleLayersForAllSources();
-  notifySelectionChanged();
+  selectedAccidentTypeFilters = nextSelection;
+  updateAccidentTypeVisibility(accidentType);
+  notifyAccidentMarkerFiltersChanged();
 }
 
-export function setSeverityTypeSelection(
+export function setSeverityTypeFilterSelected(
   severityType: SeverityType,
   selected: boolean,
 ): void {
   const nextSelection = withToggled(
-    selectedSeverityTypes,
+    selectedSeverityTypeFilters,
     severityType,
     selected,
   );
-  if (nextSelection === selectedSeverityTypes) {
+  if (nextSelection === selectedSeverityTypeFilters) {
     return;
   }
 
-  selectedSeverityTypes = nextSelection;
-  refreshVisibleLayersForAllSources();
-  notifySelectionChanged();
+  selectedSeverityTypeFilters = nextSelection;
+  updateSeverityTypeVisibility(severityType);
+  notifyAccidentMarkerFiltersChanged();
 }
 
 function withToggled<T>(
@@ -149,73 +135,50 @@ function withToggled<T>(
   return next;
 }
 
-function notifySelectionChanged(): void {
-  for (const listener of selectionListeners) {
+function notifyAccidentMarkerFiltersChanged(): void {
+  for (const listener of accidentMarkerFilterListeners) {
     listener();
   }
 }
 
-function createSourceState(): SourceState {
-  return {
-    registeredMarkers: [],
-    visibleLayerGroup: L.layerGroup(),
-    map: null,
-    isBatchingRegistration: false,
-  };
+export function attachAccidentMarkersForSource(
+  map: L.Map,
+  dataSourceId: DataSourceId,
+): void {
+  accidentMarkerStateBySource[dataSourceId].attachToMap(map, isMarkerSelected);
 }
 
-export function attachMarkersForSource(map: L.Map, source: DataSource): void {
-  const state = stateBySource[source];
-  state.map = map;
-  if (!map.hasLayer(state.visibleLayerGroup)) {
-    state.visibleLayerGroup.addTo(map);
-  }
+export function detachAccidentMarkersForSource(
+  map: L.Map,
+  dataSourceId: DataSourceId,
+): void {
+  accidentMarkerStateBySource[dataSourceId].detachFromMap(map);
 }
 
-export function detachMarkersForSource(map: L.Map, source: DataSource): void {
-  const state = stateBySource[source];
-  if (map.hasLayer(state.visibleLayerGroup)) {
-    map.removeLayer(state.visibleLayerGroup);
-  }
-  if (state.map === map) {
-    state.map = null;
+function updateAccidentTypeVisibility(accidentType: AccidentType): void {
+  for (const dataSourceId of DATA_SOURCE_IDS) {
+    accidentMarkerStateBySource[dataSourceId].updateAccidentTypeVisibility(
+      accidentType,
+      isMarkerSelected,
+    );
   }
 }
 
-function refreshVisibleLayersForAllSources(): void {
-  for (const source of DATA_SOURCES) {
-    refreshVisibleLayers(source);
+function updateSeverityTypeVisibility(severityType: SeverityType): void {
+  for (const dataSourceId of DATA_SOURCE_IDS) {
+    accidentMarkerStateBySource[dataSourceId].updateSeverityTypeVisibility(
+      severityType,
+      isMarkerSelected,
+    );
   }
 }
 
-function refreshVisibleLayers(source: DataSource): void {
-  const state = stateBySource[source];
-  const { map, visibleLayerGroup, registeredMarkers } = state;
-  const wasLayerVisible = map !== null && map.hasLayer(visibleLayerGroup);
-
-  if (map && wasLayerVisible) {
-    map.removeLayer(visibleLayerGroup);
-  }
-
-  visibleLayerGroup.clearLayers();
-
-  for (const { marker, accidentType, severityType } of registeredMarkers) {
-    if (isSelected(accidentType, severityType)) {
-      visibleLayerGroup.addLayer(marker);
-    }
-  }
-
-  if (map && wasLayerVisible) {
-    visibleLayerGroup.addTo(map);
-  }
-}
-
-function isSelected(
+function isMarkerSelected(
   accidentType: AccidentType,
   severityType: SeverityType,
 ): boolean {
   return (
-    selectedAccidentTypes.has(accidentType) &&
-    selectedSeverityTypes.has(severityType)
+    selectedAccidentTypeFilters.has(accidentType) &&
+    selectedSeverityTypeFilters.has(severityType)
   );
 }

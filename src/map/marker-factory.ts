@@ -7,30 +7,35 @@ import {
   getMarkerStyle,
 } from '../features/accident-classification';
 import { renderAccidentPopup } from './popup-renderer';
-import { type DataSource } from './data-source-types';
-import { registerMarker } from './marker-store';
+import { type DataSourceId } from './data-source-types';
+import { registerAccidentMarker } from './marker-store';
 
-export interface CategorizedMarkerData {
+export interface AccidentMarkerData {
   latitude: number;
   longitude: number;
   accidentType: AccidentType;
   severityType: SeverityType;
-  popupProperties: PopupPropertySource;
+  popupProperties: AccidentPopupPropertySource;
 }
 
-export type PopupPropertySource =
-  | Record<string, unknown>
-  | (() => Record<string, unknown>);
+export type AccidentPopupPropertySource =
+  Record<string, unknown> | (() => Record<string, unknown>);
 
-const POPUP_PROPERTIES_SYMBOL = Symbol('popupProperties');
-
-type MarkerWithPopupProperties = L.CircleMarker & {
-  [POPUP_PROPERTIES_SYMBOL]: PopupPropertySource;
+const ACCIDENT_POPUP_PROPERTIES_SYMBOL = Symbol('popupProperties');
+const ACCIDENT_POPUP_OPTIONS: L.PopupOptions = {
+  autoPanPadding: L.point(24, 24),
+  className: 'accident-popup',
+  maxWidth: 380,
+  minWidth: 260,
 };
 
-export function createAndRegisterMarker(
+type AccidentMarkerWithPopupProperties = L.CircleMarker & {
+  [ACCIDENT_POPUP_PROPERTIES_SYMBOL]: AccidentPopupPropertySource;
+};
+
+export function createAndRegisterGeoPackageAccidentMarker(
   feature: GeoJSON.Feature,
-  source: DataSource = 'local',
+  dataSourceId: DataSourceId = 'local',
 ): L.CircleMarker | null {
   if (!hasValidPointGeometry(feature.geometry)) {
     return null;
@@ -43,7 +48,7 @@ export function createAndRegisterMarker(
 
   const properties = (feature.properties ?? {}) as AccidentProperties;
 
-  return createAndRegisterCategorizedMarker(
+  return createAndRegisterAccidentMarker(
     {
       latitude,
       longitude,
@@ -51,26 +56,29 @@ export function createAndRegisterMarker(
       accidentType: getAccidentType(properties),
       severityType: getSeverityType(properties),
     },
-    source,
+    dataSourceId,
   );
 }
 
-export function createAndRegisterCategorizedMarker(
-  markerData: CategorizedMarkerData,
-  source: DataSource,
+export function createAndRegisterAccidentMarker(
+  accidentMarkerData: AccidentMarkerData,
+  dataSourceId: DataSourceId,
 ): L.CircleMarker {
   const marker = L.circleMarker(
-    [markerData.latitude, markerData.longitude],
-    getMarkerStyle(markerData.accidentType, markerData.severityType),
-  ) as MarkerWithPopupProperties;
-  marker[POPUP_PROPERTIES_SYMBOL] = markerData.popupProperties;
-  marker.bindPopup(renderPopupContent);
+    [accidentMarkerData.latitude, accidentMarkerData.longitude],
+    getMarkerStyle(
+      accidentMarkerData.accidentType,
+      accidentMarkerData.severityType,
+    ),
+  ) as AccidentMarkerWithPopupProperties;
+  marker[ACCIDENT_POPUP_PROPERTIES_SYMBOL] = accidentMarkerData.popupProperties;
+  marker.bindPopup(renderPopupContent, ACCIDENT_POPUP_OPTIONS);
 
-  registerMarker(
+  registerAccidentMarker(
     marker,
-    markerData.accidentType,
-    markerData.severityType,
-    source,
+    accidentMarkerData.accidentType,
+    accidentMarkerData.severityType,
+    dataSourceId,
   );
 
   return marker;
@@ -87,8 +95,8 @@ function isFiniteCoordinate(value: number): boolean {
 }
 
 function renderPopupContent(layer: L.Layer): string {
-  const marker = layer as MarkerWithPopupProperties;
-  const popupSource = marker[POPUP_PROPERTIES_SYMBOL];
+  const marker = layer as AccidentMarkerWithPopupProperties;
+  const popupSource = marker[ACCIDENT_POPUP_PROPERTIES_SYMBOL];
   const popupProperties =
     typeof popupSource === 'function' ? popupSource() : popupSource;
 

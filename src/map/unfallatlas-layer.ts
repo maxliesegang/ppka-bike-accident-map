@@ -1,10 +1,10 @@
 import * as L from 'leaflet';
 import {
-  beginMarkerRegistrationBatch,
-  clearRegisteredMarkers,
-  endMarkerRegistrationBatch,
-  attachMarkersForSource,
-  detachMarkersForSource,
+  beginAccidentMarkerBatch,
+  clearAccidentMarkersForSource,
+  endAccidentMarkerBatch,
+  attachAccidentMarkersForSource,
+  detachAccidentMarkersForSource,
 } from './marker-store';
 import {
   getAvailableUnfallatlasYears,
@@ -13,25 +13,25 @@ import {
 
 interface UnfallatlasLayerState {
   selectedYears: number[];
-  hasInitializedSelection: boolean;
-  selectionInitPromise: Promise<void> | null;
-  isVisible: boolean;
-  loadedYearsKey: string | null;
-  loadPromise: Promise<void> | null;
-  hasPendingReload: boolean;
+  hasInitializedYearSelection: boolean;
+  yearSelectionInitializationPromise: Promise<void> | null;
+  isLayerVisible: boolean;
+  loadedYearSelectionKey: string | null;
+  markerLoadPromise: Promise<void> | null;
+  hasQueuedReload: boolean;
 }
 
 const state: UnfallatlasLayerState = {
   selectedYears: [],
-  hasInitializedSelection: false,
-  selectionInitPromise: null,
-  isVisible: false,
-  loadedYearsKey: null,
-  loadPromise: null,
-  hasPendingReload: false,
+  hasInitializedYearSelection: false,
+  yearSelectionInitializationPromise: null,
+  isLayerVisible: false,
+  loadedYearSelectionKey: null,
+  markerLoadPromise: null,
+  hasQueuedReload: false,
 };
 
-const yearSelectionListeners = new Set<() => void>();
+const unfallatlasYearListeners = new Set<() => void>();
 
 export async function fetchUnfallatlasAvailableYears(): Promise<number[]> {
   return getAvailableUnfallatlasYears();
@@ -42,21 +42,21 @@ export function getSelectedUnfallatlasYears(): readonly number[] {
 }
 
 export function subscribeToUnfallatlasYears(listener: () => void): () => void {
-  yearSelectionListeners.add(listener);
+  unfallatlasYearListeners.add(listener);
   return () => {
-    yearSelectionListeners.delete(listener);
+    unfallatlasYearListeners.delete(listener);
   };
 }
 
-export function setUnfallatlasYears(years: readonly number[]): void {
-  const hasSelectionChanged = applySelectedYears(years, true);
+export function setSelectedUnfallatlasYears(years: readonly number[]): void {
+  const hasSelectionChanged = updateSelectedYears(years, true);
 
-  if (state.isVisible && hasSelectionChanged) {
-    triggerLoad();
+  if (state.isLayerVisible && hasSelectionChanged) {
+    requestUnfallatlasMarkerLoad();
   }
 }
 
-export function setUnfallatlasYearSelection(
+export function setUnfallatlasYearSelected(
   year: number,
   selected: boolean,
 ): void {
@@ -67,68 +67,68 @@ export function setUnfallatlasYearSelection(
     nextYears.delete(year);
   }
 
-  setUnfallatlasYears([...nextYears]);
+  setSelectedUnfallatlasYears([...nextYears]);
 }
 
 export function showUnfallatlasLayer(map: L.Map): void {
-  state.isVisible = true;
-  attachMarkersForSource(map, 'unfallatlas');
-  triggerLoad();
+  state.isLayerVisible = true;
+  attachAccidentMarkersForSource(map, 'unfallatlas');
+  requestUnfallatlasMarkerLoad();
 }
 
 export function hideUnfallatlasLayer(map: L.Map): void {
-  state.isVisible = false;
-  state.hasPendingReload = false;
-  detachMarkersForSource(map, 'unfallatlas');
+  state.isLayerVisible = false;
+  state.hasQueuedReload = false;
+  detachAccidentMarkersForSource(map, 'unfallatlas');
 }
 
-function triggerLoad(): void {
-  if (!state.isVisible) {
+function requestUnfallatlasMarkerLoad(): void {
+  if (!state.isLayerVisible) {
     return;
   }
 
-  if (state.loadPromise) {
-    state.hasPendingReload = true;
+  if (state.markerLoadPromise) {
+    state.hasQueuedReload = true;
     return;
   }
 
-  state.loadPromise = loadUnfallatlasForCurrentSelection()
+  state.markerLoadPromise = loadSelectedUnfallatlasYears()
     .catch((error: unknown) => {
-      clearRegisteredMarkers('unfallatlas');
+      clearAccidentMarkersForSource('unfallatlas');
       console.error('Error loading Unfallatlas data:', error);
     })
     .finally(() => {
-      state.loadPromise = null;
-      if (state.hasPendingReload) {
-        state.hasPendingReload = false;
-        triggerLoad();
+      state.markerLoadPromise = null;
+      if (state.hasQueuedReload) {
+        state.hasQueuedReload = false;
+        requestUnfallatlasMarkerLoad();
       }
     });
 }
 
-async function loadUnfallatlasForCurrentSelection(): Promise<void> {
-  await ensureSelectionInitialized();
+async function loadSelectedUnfallatlasYears(): Promise<void> {
+  await ensureYearSelectionInitialized();
 
   const yearsSnapshot = state.selectedYears;
-  const currentYearsKey = toYearsKey(yearsSnapshot);
-  if (currentYearsKey === state.loadedYearsKey) {
+  const currentYearsKey = toYearSelectionKey(yearsSnapshot);
+  if (currentYearsKey === state.loadedYearSelectionKey) {
     return;
   }
 
-  clearRegisteredMarkers('unfallatlas');
+  clearAccidentMarkersForSource('unfallatlas');
 
   if (yearsSnapshot.length === 0) {
-    state.loadedYearsKey = currentYearsKey;
+    state.loadedYearSelectionKey = currentYearsKey;
     return;
   }
 
-  beginMarkerRegistrationBatch('unfallatlas');
+  beginAccidentMarkerBatch('unfallatlas');
   const result = await loadUnfallatlasMarkersForYears(yearsSnapshot).finally(
     () => {
-      endMarkerRegistrationBatch('unfallatlas');
+      endAccidentMarkerBatch('unfallatlas');
     },
   );
-  state.loadedYearsKey = currentYearsKey;
+  state.loadedYearSelectionKey = currentYearsKey;
 
   if (result.loadedYears === 0) {
     console.warn(
@@ -149,30 +149,30 @@ async function loadUnfallatlasForCurrentSelection(): Promise<void> {
   );
 }
 
-async function ensureSelectionInitialized(): Promise<void> {
-  if (state.hasInitializedSelection) {
+async function ensureYearSelectionInitialized(): Promise<void> {
+  if (state.hasInitializedYearSelection) {
     return;
   }
 
-  if (!state.selectionInitPromise) {
-    state.selectionInitPromise = fetchUnfallatlasAvailableYears()
+  if (!state.yearSelectionInitializationPromise) {
+    state.yearSelectionInitializationPromise = fetchUnfallatlasAvailableYears()
       .then((availableYears) => {
-        applySelectedYears(
-          !state.hasInitializedSelection && state.selectedYears.length === 0
+        updateSelectedYears(
+          !state.hasInitializedYearSelection && state.selectedYears.length === 0
             ? availableYears
             : state.selectedYears,
           true,
         );
       })
       .finally(() => {
-        state.selectionInitPromise = null;
+        state.yearSelectionInitializationPromise = null;
       });
   }
 
-  return state.selectionInitPromise;
+  return state.yearSelectionInitializationPromise;
 }
 
-function applySelectedYears(
+function updateSelectedYears(
   years: readonly number[],
   markInitialized: boolean,
 ): boolean {
@@ -182,7 +182,7 @@ function applySelectedYears(
     normalizedYears,
   );
   const hasInitializationChanged =
-    markInitialized && !state.hasInitializedSelection;
+    markInitialized && !state.hasInitializedYearSelection;
 
   if (!hasSelectionChanged && !hasInitializationChanged) {
     return false;
@@ -190,10 +190,10 @@ function applySelectedYears(
 
   state.selectedYears = normalizedYears;
   if (markInitialized) {
-    state.hasInitializedSelection = true;
+    state.hasInitializedYearSelection = true;
   }
   if (hasSelectionChanged) {
-    state.loadedYearsKey = null;
+    state.loadedYearSelectionKey = null;
   }
   notifyYearSelectionChanged();
 
@@ -201,7 +201,7 @@ function applySelectedYears(
 }
 
 function notifyYearSelectionChanged(): void {
-  for (const listener of yearSelectionListeners) {
+  for (const listener of unfallatlasYearListeners) {
     listener();
   }
 }
@@ -235,6 +235,6 @@ function areYearsEqual(
   return true;
 }
 
-function toYearsKey(years: readonly number[]): string {
+function toYearSelectionKey(years: readonly number[]): string {
   return years.join(',');
 }

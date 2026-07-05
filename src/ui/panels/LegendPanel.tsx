@@ -9,17 +9,20 @@ import {
   LOCAL_SEVERITY_LEGENDS,
   UNFALLATLAS_SEVERITY_LEGENDS,
 } from '../../constants';
-import { getAccidentColor, getSeverityRadius } from '../../data/accident-styles';
 import {
-  getActiveDataSource,
-  onDataSourceChange,
+  getAccidentColor,
+  getSeverityRadius,
+} from '../../data/accident-styles';
+import {
+  getSelectedDataSourceId,
+  subscribeToDataSourceId,
 } from '../../map/data-source-store';
 import {
   getSelectedAccidentTypes,
   getSelectedSeverityTypes,
-  setAccidentTypeSelection,
-  setSeverityTypeSelection,
-  subscribeToSelection,
+  setAccidentTypeFilterSelected,
+  setSeverityTypeFilterSelected,
+  subscribeToAccidentMarkerFilters,
 } from '../../map/marker-store';
 import { PanelFrame } from './PanelFrame';
 
@@ -30,18 +33,23 @@ import { PanelFrame } from './PanelFrame';
  * `marker-store`; this panel only reflects and mutates it.
  */
 export function LegendPanel() {
-  const source = useSyncExternalStore(onDataSourceChange, getActiveDataSource);
+  const selectedDataSourceId = useSyncExternalStore(
+    subscribeToDataSourceId,
+    getSelectedDataSourceId,
+  );
   const accidentSelection = useSyncExternalStore(
-    subscribeToSelection,
+    subscribeToAccidentMarkerFilters,
     getSelectedAccidentTypes,
   );
   const severitySelection = useSyncExternalStore(
-    subscribeToSelection,
+    subscribeToAccidentMarkerFilters,
     getSelectedSeverityTypes,
   );
 
   const severityEntries =
-    source === 'local' ? LOCAL_SEVERITY_LEGENDS : UNFALLATLAS_SEVERITY_LEGENDS;
+    selectedDataSourceId === 'local'
+      ? LOCAL_SEVERITY_LEGENDS
+      : UNFALLATLAS_SEVERITY_LEGENDS;
 
   return (
     <PanelFrame
@@ -63,7 +71,7 @@ export function LegendPanel() {
               label={description}
               checked={accidentSelection.has(type)}
               onChange={(event) =>
-                setAccidentTypeSelection(type, event.target.checked)
+                setAccidentTypeFilterSelected(type, event.target.checked)
               }
             />
           </div>
@@ -88,7 +96,7 @@ export function LegendPanel() {
                 label={description}
                 checked={severitySelection.has(type)}
                 onChange={(event) =>
-                  setSeverityTypeSelection(type, event.target.checked)
+                  setSeverityTypeFilterSelected(type, event.target.checked)
                 }
               />
             </div>

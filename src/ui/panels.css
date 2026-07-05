@@ -19,7 +19,11 @@
 }
 
 .cp {
-  font-family: var(--kern-typography-font-family-fira-sans, 'Fira Sans', sans-serif);
+  font-family: var(
+    --kern-typography-font-family-fira-sans,
+    'Fira Sans',
+    sans-serif
+  );
   color: var(--kern-color-layout-text-default, #1d2a37);
 }
 
@@ -54,8 +58,9 @@
   gap: var(--kern-metric-space-small, 8px);
   /* Left padding matches the body so the title lines up with the content
    * beneath it; the close button sits tight to the right corner. */
-  padding: var(--kern-metric-space-small, 8px) var(--kern-metric-space-small, 8px)
-    var(--kern-metric-space-small, 8px) var(--kern-metric-space-default, 16px);
+  padding: var(--kern-metric-space-small, 8px)
+    var(--kern-metric-space-small, 8px) var(--kern-metric-space-small, 8px)
+    var(--kern-metric-space-default, 16px);
   background: var(--kern-color-layout-background-hued, #f6f9fc);
   border-bottom: 1px solid var(--kern-color-layout-border, #d9e1e8);
 }

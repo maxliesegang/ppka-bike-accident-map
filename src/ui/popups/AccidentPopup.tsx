@@ -1,32 +1,25 @@
 import {
   KernBadge,
   KernDescriptionList,
+  KernDivider,
   KernHeading,
+  KernText,
 } from '@kern-ux-annex/kern-react-kit';
+import {
+  buildAccidentPopupViewModel,
+  type AccidentPopupMetric,
+  type AccidentPopupSummaryItem,
+} from './accident-popup-view-model';
 
 interface AccidentPopupProps {
   properties: Record<string, unknown> | null | undefined;
 }
 
 /**
- * Human-readable labels for the raw GeoPackage (local) fields. Unfallatlas
- * records already arrive with German labels, so keys not listed here are shown
- * as-is.
- */
-const FIELD_LABELS: Record<string, string> = {
-  sum_bike: 'Fahrräder',
-  sum_ped: 'Zu Fuß',
-  sum_car_truck_bus: 'Kfz (Auto/Lkw/Bus)',
-  sum_injured_bike: 'Verletzte (Rad)',
-  sum_injured_ped: 'Verletzte (zu Fuß)',
-  sum_severely_injured_bike: 'Schwerverletzte (Rad)',
-};
-
-/**
  * Content for a marker popup, rendered with Kern UX components. Rendered to a
  * static HTML string by `renderAccidentPopup` and handed to Leaflet's popup.
- * The severity field, when present, is surfaced as a badge; everything else is
- * shown as a labelled description list.
+ * The top section is optimized for scanning; the complete labelled field list
+ * remains available below it for verification and power use.
  */
 export function AccidentPopup({ properties }: AccidentPopupProps) {
   if (!properties || Object.keys(properties).length === 0) {
@@ -37,59 +30,71 @@ export function AccidentPopup({ properties }: AccidentPopupProps) {
     );
   }
 
-  const severity =
-    typeof properties.Schweregrad === 'string'
-      ? properties.Schweregrad
-      : undefined;
-
-  const details: Record<string, string> = {};
-  for (const [key, value] of Object.entries(properties)) {
-    if (key === 'Schweregrad') {
-      continue;
-    }
-    details[FIELD_LABELS[key] ?? key] = formatValue(value);
-  }
+  const viewModel = buildAccidentPopupViewModel(properties);
 
   return (
     <div className="popup-container">
-      <KernHeading level={3} size="small">
-        Unfalldetails
-      </KernHeading>
-      {severity && (
-        <div className="popup-badge-row">
-          <KernBadge label={severity} variant={severityVariant(severity)} withIcon />
+      <header className="popup-header">
+        <div className="popup-title">
+          <KernText type="preline" size="small">
+            {viewModel.sourceLabel}
+          </KernText>
+          <KernHeading level={3} size="small">
+            Unfalldetails
+          </KernHeading>
+        </div>
+        {viewModel.severity && (
+          <KernBadge
+            label={viewModel.severity.label}
+            variant={viewModel.severity.variant}
+            withIcon
+          />
+        )}
+      </header>
+
+      <div className="popup-summary" aria-label="Zusammenfassung">
+        {viewModel.summaryItems.map((item) => (
+          <SummaryItem item={item} key={item.label} />
+        ))}
+      </div>
+
+      {viewModel.metrics.length > 0 && (
+        <div className="popup-metrics" aria-label="Kennzahlen">
+          {viewModel.metrics.map((metric) => (
+            <MetricItem metric={metric} key={metric.label} />
+          ))}
         </div>
       )}
-      <KernDescriptionList details={details} />
+
+      <KernDivider spacing="small" />
+
+      <section className="popup-details-section" aria-label="Alle Angaben">
+        <KernHeading level={4} size="small">
+          Alle Angaben
+        </KernHeading>
+        <KernDescriptionList
+          details={viewModel.details}
+          className="popup-details"
+        />
+      </section>
     </div>
   );
 }
 
-function severityVariant(
-  severity: string,
-): 'info' | 'success' | 'warning' | 'danger' {
-  if (severity.includes('Getöteten')) {
-    return 'danger';
-  }
-  if (severity.includes('Schwer')) {
-    return 'warning';
-  }
-  return 'info';
+function SummaryItem({ item }: { item: AccidentPopupSummaryItem }) {
+  return (
+    <div className="popup-summary__item">
+      <span className="popup-summary__label">{item.label}</span>
+      <span className="popup-summary__value">{item.value}</span>
+    </div>
+  );
 }
 
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return 'N/A';
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
+function MetricItem({ metric }: { metric: AccidentPopupMetric }) {
+  return (
+    <div className="popup-metric">
+      <span className="popup-metric__value">{metric.value}</span>
+      <span className="popup-metric__label">{metric.label}</span>
+    </div>
+  );
 }
