@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { KernRoot } from '../KernRoot';
 import { FilterPanel } from '../panels/FilterPanel';
+import { HotspotPanel } from '../panels/HotspotPanel';
 import { LegendPanel } from '../panels/LegendPanel';
 import '../panels.css';
 
@@ -50,5 +51,11 @@ export function createFilterControl(): L.Control {
 export function createLegendControl(): L.Control {
   return new MapPanelControl(() => <LegendPanel />, {
     position: 'bottomleft',
+  });
+}
+
+export function createHotspotControl(): L.Control {
+  return new MapPanelControl((map) => <HotspotPanel map={map} />, {
+    position: 'bottomright',
   });
 }

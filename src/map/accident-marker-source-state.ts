@@ -16,6 +16,16 @@ export class AccidentMarkerSourceState {
   readonly visibleMarkersLayer = L.layerGroup();
 
   private readonly markerEntries: AccidentMarkerEntry[] = [];
+
+  /**
+   * Every registered marker for this source, regardless of current filter
+   * visibility. Read-only so analytics consumers (e.g. the hotspot store) can
+   * aggregate over the full set without mutating the marker index.
+   */
+  get entries(): readonly AccidentMarkerEntry[] {
+    return this.markerEntries;
+  }
+
   private readonly markerEntriesByAccidentType = new Map<
     AccidentType,
     AccidentMarkerEntry[]

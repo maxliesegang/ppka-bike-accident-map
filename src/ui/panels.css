@@ -145,6 +145,86 @@
   justify-content: flex-start;
 }
 
+/* Ranked hotspot leaderboard. Each row is a button so the whole entry is one
+ * clickable, keyboard-focusable target that flies the map to the spot. */
+.cp__hotspot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--kern-metric-space-x-small, 4px);
+  /* Cap to a scrollable stack so a long leaderboard never outgrows the card. */
+  max-height: 42vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cp__hotspot-row {
+  display: flex;
+  align-items: center;
+  gap: var(--kern-metric-space-small, 8px);
+  width: 100%;
+  padding: var(--kern-metric-space-x-small, 4px)
+    var(--kern-metric-space-small, 8px);
+  border: 1px solid transparent;
+  border-radius: var(--kern-metric-border-radius-default, 4px);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp__hotspot-row:hover {
+  background: var(--kern-color-layout-background-hued, #f6f9fc);
+}
+
+.cp__hotspot-row:focus-visible {
+  outline: none;
+  border-color: var(--kern-color-focus, #1a44d6);
+  box-shadow: 0 0 0 2px var(--kern-color-focus, #1a44d6);
+}
+
+/* Fixed-width rank chip so the counts and labels line up down the column. */
+.cp__hotspot-rank {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--kern-metric-space-x-small, 4px);
+  border-radius: var(--kern-metric-border-radius-circle, 50%);
+  background: var(--kern-color-layout-text-default, #2e3f55);
+  color: var(--kern-color-layout-background-default, #ffffff);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.cp__hotspot-body {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.cp__hotspot-count {
+  font-weight: 600;
+}
+
+.cp__hotspot-type {
+  display: flex;
+  align-items: center;
+  gap: var(--kern-metric-space-x-small, 4px);
+  color: var(--kern-color-layout-text-muted, #5a6978);
+  font-size: 0.9em;
+}
+
+@media (max-width: 600px) {
+  .cp__hotspot-list {
+    max-height: 38vh;
+  }
+}
+
 @media (max-width: 600px) {
   .cp__year-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

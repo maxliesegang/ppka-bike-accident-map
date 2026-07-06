@@ -107,6 +107,13 @@ html {
   overflow-wrap: anywhere;
 }
 
+/* Headline accident total for a hotspot detail popup. */
+.hotspot-popup__count {
+  margin: 0;
+  font-size: 1.25em;
+  font-weight: 600;
+}
+
 .popup-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

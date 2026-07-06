@@ -6,7 +6,8 @@ import {
   getSeverityType,
   getMarkerStyle,
 } from '../features/accident-classification';
-import { renderAccidentPopup } from './popup-renderer';
+import { renderAccidentPopup } from './accident-popup-renderer';
+import { ACCIDENT_POPUP_OPTIONS } from './popup-options';
 import { type DataSourceId } from './data-source-types';
 import { registerAccidentMarker } from './accident-marker-store';
 
@@ -22,12 +23,6 @@ export type AccidentPopupPropertySource =
   Record<string, unknown> | (() => Record<string, unknown>);
 
 const ACCIDENT_POPUP_PROPERTIES_SYMBOL = Symbol('popupProperties');
-const ACCIDENT_POPUP_OPTIONS: L.PopupOptions = {
-  autoPanPadding: L.point(24, 24),
-  className: 'accident-popup',
-  maxWidth: 380,
-  minWidth: 260,
-};
 
 type AccidentMarkerWithPopupProperties = L.CircleMarker & {
   [ACCIDENT_POPUP_PROPERTIES_SYMBOL]: AccidentPopupPropertySource;

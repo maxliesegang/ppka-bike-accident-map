@@ -2,7 +2,10 @@ import * as L from 'leaflet';
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
 import { AccidentType, SeverityType } from '../data/accident-styles';
 import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
-import { AccidentMarkerSourceState } from './accident-marker-source-state';
+import {
+  AccidentMarkerSourceState,
+  type AccidentMarkerEntry,
+} from './accident-marker-source-state';
 import { FilterSelection } from './filter-selection';
 
 const accidentMarkerStateBySource: Record<
@@ -40,6 +43,10 @@ const severityTypeDimension: MarkerFilterDimension<SeverityType> = {
 };
 
 const accidentMarkerFilterListeners = new Set<() => void>();
+// Fires when the underlying accident set changes (a source is (re)loaded or
+// cleared), as opposed to only its filter visibility. Analytics consumers such
+// as the hotspot store recompute on both signals.
+const accidentMarkerDataListeners = new Set<() => void>();
 
 export function attachLocalAccidentMarkers(map: L.Map): void {
   attachAccidentMarkersForSource(map, 'local');
@@ -49,6 +56,7 @@ export function clearAccidentMarkersForSource(
   dataSourceId: DataSourceId = 'local',
 ): void {
   accidentMarkerStateBySource[dataSourceId].clear();
+  notifyAccidentMarkerDataChanged();
 }
 
 export function beginAccidentMarkerBatch(
@@ -63,6 +71,7 @@ export function endAccidentMarkerBatch(
   accidentMarkerStateBySource[dataSourceId].endRegistrationBatch(
     isMarkerSelected,
   );
+  notifyAccidentMarkerDataChanged();
 }
 
 export function registerAccidentMarker(
@@ -94,6 +103,30 @@ export function subscribeToAccidentMarkerFilters(
   return () => {
     accidentMarkerFilterListeners.delete(listener);
   };
+}
+
+export function subscribeToAccidentMarkerData(
+  listener: () => void,
+): () => void {
+  accidentMarkerDataListeners.add(listener);
+  return () => {
+    accidentMarkerDataListeners.delete(listener);
+  };
+}
+
+/** All registered markers for a source, before any filter is applied. */
+export function getAccidentMarkerEntries(
+  dataSourceId: DataSourceId,
+): readonly AccidentMarkerEntry[] {
+  return accidentMarkerStateBySource[dataSourceId].entries;
+}
+
+/** Whether an accident of this type/severity is currently visible on the map. */
+export function isAccidentVisible(
+  accidentType: AccidentType,
+  severityType: SeverityType,
+): boolean {
+  return isMarkerSelected(accidentType, severityType);
 }
 
 export function setAccidentTypeSelected(
@@ -141,6 +174,12 @@ function setDimensionSelected<T>(
 
 function notifyAccidentMarkerFiltersChanged(): void {
   for (const listener of accidentMarkerFilterListeners) {
+    listener();
+  }
+}
+
+function notifyAccidentMarkerDataChanged(): void {
+  for (const listener of accidentMarkerDataListeners) {
     listener();
   }
 }

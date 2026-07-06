@@ -42,6 +42,7 @@
   "dependencies": {
     "@kern-ux-annex/kern-react-kit": "^2.40.0",
     "@ngageoint/geopackage": "^4.2.8",
+    "h3-js": "^4.5.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
