@@ -34,7 +34,7 @@ const GITHUB_URL = 'https://github.com/maxliesegang/ppka-bike-accident-map';
 const DATA_SOURCE_OPTIONS = [
   { value: 'local', label: 'FragDenStaat Anfrage (Karlsruhe)' },
   { value: 'unfallatlas-karlsruhe', label: 'Unfallatlas (Karlsruhe)' },
-  { value: 'unfallatlas', label: 'Unfallatlas (bundesweit)' },
+  { value: 'unfallatlas', label: 'Unfallatlas (Baden-Württemberg)' },
 ];
 
 /**
@@ -122,7 +122,7 @@ export function FilterPanel({ map }: { map: L.Map }) {
         <KernText type="body" muted className="cp__hint">
           {selectedDataSourceId === 'unfallatlas-karlsruhe'
             ? 'Unfallatlas-OpenData, eingegrenzt auf Stadt- und Landkreis Karlsruhe. Unten nach Jahr einschränkbar.'
-            : 'Bundesweite OpenData, unten nach Jahr einschränkbar.'}
+            : 'Unfallatlas-OpenData für Baden-Württemberg, unten nach Jahr einschränkbar.'}
         </KernText>
       )}
 
