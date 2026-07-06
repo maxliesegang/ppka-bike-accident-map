@@ -9,24 +9,49 @@ import {
 import {
   getAvailableUnfallatlasYears,
   loadUnfallatlasMarkersForYears,
+  type UnfallatlasRegionFilter,
 } from './unfallatlas-loader';
+import { UNFALLATLAS_KARLSRUHE_REGION } from '../constants';
+import { type DataSourceId } from './data-source-types';
+
+/**
+ * Both Unfallatlas data sources share the same CSVs and layer machinery; they
+ * differ only in geographic scope. 'unfallatlas' shows all of
+ * Baden-Württemberg, while 'unfallatlas-karlsruhe' filters rows down to
+ * Stadt-/Landkreis Karlsruhe client-side. Each source registers into its own
+ * marker bucket so hotspots and filters stay scoped to the active view.
+ */
+export type UnfallatlasSourceId = Extract<
+  DataSourceId,
+  'unfallatlas' | 'unfallatlas-karlsruhe'
+>;
+
+const REGION_FILTER_BY_SOURCE: Record<
+  UnfallatlasSourceId,
+  UnfallatlasRegionFilter | undefined
+> = {
+  unfallatlas: undefined,
+  'unfallatlas-karlsruhe': UNFALLATLAS_KARLSRUHE_REGION,
+};
 
 interface UnfallatlasLayerState {
   selectedYears: number[];
+  sourceId: UnfallatlasSourceId;
   hasInitializedYearSelection: boolean;
   yearSelectionInitializationPromise: Promise<void> | null;
   isLayerVisible: boolean;
-  loadedYearSelectionKey: string | null;
+  loadedSelectionKey: string | null;
   markerLoadPromise: Promise<void> | null;
   hasQueuedReload: boolean;
 }
 
 const state: UnfallatlasLayerState = {
   selectedYears: [],
+  sourceId: 'unfallatlas',
   hasInitializedYearSelection: false,
   yearSelectionInitializationPromise: null,
   isLayerVisible: false,
-  loadedYearSelectionKey: null,
+  loadedSelectionKey: null,
   markerLoadPromise: null,
   hasQueuedReload: false,
 };
@@ -69,16 +94,25 @@ export function setUnfallatlasYearSelected(
   setSelectedUnfallatlasYears([...nextYears]);
 }
 
-export function showUnfallatlasLayer(map: L.Map): void {
+export function showUnfallatlasLayer(
+  map: L.Map,
+  sourceId: UnfallatlasSourceId,
+): void {
+  if (sourceId !== state.sourceId) {
+    state.sourceId = sourceId;
+    // Source changed: the previously loaded markers no longer match, so force a
+    // reload rather than short-circuiting on the cached selection key.
+    state.loadedSelectionKey = null;
+  }
   state.isLayerVisible = true;
-  attachAccidentMarkersForSource(map, 'unfallatlas');
+  attachAccidentMarkersForSource(map, state.sourceId);
   requestUnfallatlasMarkerLoad();
 }
 
 export function hideUnfallatlasLayer(map: L.Map): void {
   state.isLayerVisible = false;
   state.hasQueuedReload = false;
-  detachAccidentMarkersForSource(map, 'unfallatlas');
+  detachAccidentMarkersForSource(map, state.sourceId);
 }
 
 function requestUnfallatlasMarkerLoad(): void {
@@ -93,7 +127,7 @@ function requestUnfallatlasMarkerLoad(): void {
 
   state.markerLoadPromise = loadSelectedUnfallatlasYears()
     .catch((error: unknown) => {
-      clearAccidentMarkersForSource('unfallatlas');
+      clearAccidentMarkersForSource(state.sourceId);
       console.error('Error loading Unfallatlas data:', error);
     })
     .finally(() => {
@@ -109,25 +143,28 @@ async function loadSelectedUnfallatlasYears(): Promise<void> {
   await ensureYearSelectionInitialized();
 
   const yearsSnapshot = state.selectedYears;
-  const currentYearsKey = toYearSelectionKey(yearsSnapshot);
-  if (currentYearsKey === state.loadedYearSelectionKey) {
+  const sourceId = state.sourceId;
+  const currentSelectionKey = toSelectionKey(sourceId, yearsSnapshot);
+  if (currentSelectionKey === state.loadedSelectionKey) {
     return;
   }
 
-  clearAccidentMarkersForSource('unfallatlas');
+  clearAccidentMarkersForSource(sourceId);
 
   if (yearsSnapshot.length === 0) {
-    state.loadedYearSelectionKey = currentYearsKey;
+    state.loadedSelectionKey = currentSelectionKey;
     return;
   }
 
-  beginAccidentMarkerBatch('unfallatlas');
-  const result = await loadUnfallatlasMarkersForYears(yearsSnapshot).finally(
-    () => {
-      endAccidentMarkerBatch('unfallatlas');
-    },
-  );
-  state.loadedYearSelectionKey = currentYearsKey;
+  beginAccidentMarkerBatch(sourceId);
+  const result = await loadUnfallatlasMarkersForYears(
+    yearsSnapshot,
+    REGION_FILTER_BY_SOURCE[sourceId],
+    sourceId,
+  ).finally(() => {
+    endAccidentMarkerBatch(sourceId);
+  });
+  state.loadedSelectionKey = currentSelectionKey;
 
   if (result.loadedYears === 0) {
     console.warn(
@@ -192,7 +229,7 @@ function updateSelectedYears(
     state.hasInitializedYearSelection = true;
   }
   if (hasSelectionChanged) {
-    state.loadedYearSelectionKey = null;
+    state.loadedSelectionKey = null;
   }
   notifyYearSelectionChanged();
 
@@ -234,6 +271,9 @@ function areYearsEqual(
   return true;
 }
 
-function toYearSelectionKey(years: readonly number[]): string {
-  return years.join(',');
+function toSelectionKey(
+  sourceId: UnfallatlasSourceId,
+  years: readonly number[],
+): string {
+  return `${sourceId}|${years.join(',')}`;
 }

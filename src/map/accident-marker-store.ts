@@ -13,6 +13,7 @@ const accidentMarkerStateBySource: Record<
   AccidentMarkerSourceState
 > = {
   local: new AccidentMarkerSourceState(),
+  'unfallatlas-karlsruhe': new AccidentMarkerSourceState(),
   unfallatlas: new AccidentMarkerSourceState(),
 };
 

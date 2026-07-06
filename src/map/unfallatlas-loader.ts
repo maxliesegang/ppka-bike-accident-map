@@ -9,6 +9,7 @@ import {
   AccidentMarkerData,
   createAndRegisterAccidentMarker,
 } from './accident-marker-factory';
+import { type DataSourceId } from './data-source-types';
 
 const REQUIRED_COLUMNS = [
   'UJAHR',
@@ -39,6 +40,17 @@ interface ColumnIndexMap {
   IstSonstige: number;
   XGCSWGS84: number;
   YGCSWGS84: number;
+  UREGBEZ: number | undefined;
+  UKREIS: number | undefined;
+}
+
+/**
+ * Optional geographic narrowing applied while parsing rows. A row is kept only
+ * if its Regierungsbezirk matches `uregbez` and its Kreis is in `ukreise`.
+ */
+export interface UnfallatlasRegionFilter {
+  uregbez: number;
+  ukreise: readonly number[];
 }
 
 export interface UnfallatlasLoadResult {
@@ -201,6 +213,8 @@ function emptyManifest(): UnfallatlasManifest {
 
 export async function loadUnfallatlasMarkersForYears(
   years: readonly number[],
+  regionFilter: UnfallatlasRegionFilter | undefined,
+  markerSourceId: DataSourceId,
 ): Promise<UnfallatlasLoadResult> {
   let markerCount = 0;
   let loadedYears = 0;
@@ -216,7 +230,12 @@ export async function loadUnfallatlasMarkersForYears(
     }
 
     try {
-      markerCount += await parseAndRegisterRows(result.csvText, result.year);
+      markerCount += await parseAndRegisterRows(
+        result.csvText,
+        result.year,
+        regionFilter,
+        markerSourceId,
+      );
       loadedYears += 1;
     } catch (error: unknown) {
       failedYears += 1;
@@ -290,6 +309,8 @@ function buildCsvPaths(year: number): readonly string[] {
 async function parseAndRegisterRows(
   csvText: string,
   fallbackYear: number,
+  regionFilter: UnfallatlasRegionFilter | undefined,
+  markerSourceId: DataSourceId,
 ): Promise<number> {
   const rows = iterateCsvRows(csvText);
   const firstRow = rows.next();
@@ -298,7 +319,10 @@ async function parseAndRegisterRows(
   }
 
   const headerValues = firstRow.value.map(cleanCsvValue);
-  const columnIndex = createColumnIndex(headerValues);
+  const columnIndex = createColumnIndex(
+    headerValues,
+    regionFilter !== undefined,
+  );
 
   let markerCount = 0;
   let parsedRowCount = 0;
@@ -309,12 +333,17 @@ async function parseAndRegisterRows(
     }
     parsedRowCount += 1;
 
-    const accidentMarkerData = mapToMarkerData(values, columnIndex, fallbackYear);
+    const accidentMarkerData = mapToMarkerData(
+      values,
+      columnIndex,
+      fallbackYear,
+      regionFilter,
+    );
     if (!accidentMarkerData) {
       continue;
     }
 
-    createAndRegisterAccidentMarker(accidentMarkerData, 'unfallatlas');
+    createAndRegisterAccidentMarker(accidentMarkerData, markerSourceId);
     markerCount += 1;
 
     if (parsedRowCount % REGISTRATION_YIELD_INTERVAL === 0) {
@@ -325,7 +354,10 @@ async function parseAndRegisterRows(
   return markerCount;
 }
 
-function createColumnIndex(headers: string[]): ColumnIndexMap {
+function createColumnIndex(
+  headers: string[],
+  includeRegionColumns: boolean,
+): ColumnIndexMap {
   const indexByHeader = new Map<string, number>();
 
   for (let index = 0; index < headers.length; index += 1) {
@@ -333,7 +365,10 @@ function createColumnIndex(headers: string[]): ColumnIndexMap {
     indexByHeader.set(header, index);
   }
 
-  const missingColumns = REQUIRED_COLUMNS.filter(
+  const requiredColumns = includeRegionColumns
+    ? [...REQUIRED_COLUMNS, 'UREGBEZ', 'UKREIS']
+    : REQUIRED_COLUMNS;
+  const missingColumns = requiredColumns.filter(
     (column) => !indexByHeader.has(column),
   );
 
@@ -365,6 +400,12 @@ function createColumnIndex(headers: string[]): ColumnIndexMap {
     IstSonstige: indexIstSonstige,
     XGCSWGS84: getRequiredColumnIndex(indexByHeader, 'XGCSWGS84'),
     YGCSWGS84: getRequiredColumnIndex(indexByHeader, 'YGCSWGS84'),
+    UREGBEZ: includeRegionColumns
+      ? getRequiredColumnIndex(indexByHeader, 'UREGBEZ')
+      : undefined,
+    UKREIS: includeRegionColumns
+      ? getRequiredColumnIndex(indexByHeader, 'UKREIS')
+      : undefined,
   };
 }
 
@@ -372,7 +413,12 @@ function mapToMarkerData(
   values: string[],
   columnIndex: ColumnIndexMap,
   fallbackYear: number,
+  regionFilter?: UnfallatlasRegionFilter,
 ): AccidentMarkerData | null {
+  if (regionFilter && !isRowInRegion(values, columnIndex, regionFilter)) {
+    return null;
+  }
+
   const longitude = parseCoordinate(values[columnIndex.XGCSWGS84]);
   const latitude = parseCoordinate(values[columnIndex.YGCSWGS84]);
   if (latitude === null || longitude === null) {
@@ -572,6 +618,24 @@ function parseInteger(value: string | undefined): number | null {
 function parseFlag(value: string | undefined): boolean {
   const parsed = parseInteger(value);
   return parsed !== null && parsed > 0;
+}
+
+function isRowInRegion(
+  values: string[],
+  columnIndex: ColumnIndexMap,
+  regionFilter: UnfallatlasRegionFilter,
+): boolean {
+  if (columnIndex.UREGBEZ === undefined || columnIndex.UKREIS === undefined) {
+    return false;
+  }
+
+  const uregbez = parseInteger(values[columnIndex.UREGBEZ]);
+  const ukreis = parseInteger(values[columnIndex.UKREIS]);
+  return (
+    uregbez === regionFilter.uregbez &&
+    ukreis !== null &&
+    regionFilter.ukreise.includes(ukreis)
+  );
 }
 
 function parseCoordinate(value: string | undefined): number | null {

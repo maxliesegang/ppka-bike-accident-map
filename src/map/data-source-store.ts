@@ -18,8 +18,12 @@ const dataSourceVisibilityActions: Record<
     show: (map) => attachAccidentMarkersForSource(map, 'local'),
     hide: (map) => detachAccidentMarkersForSource(map, 'local'),
   },
+  'unfallatlas-karlsruhe': {
+    show: (map) => showUnfallatlasLayer(map, 'unfallatlas-karlsruhe'),
+    hide: hideUnfallatlasLayer,
+  },
   unfallatlas: {
-    show: showUnfallatlasLayer,
+    show: (map) => showUnfallatlasLayer(map, 'unfallatlas'),
     hide: hideUnfallatlasLayer,
   },
 };

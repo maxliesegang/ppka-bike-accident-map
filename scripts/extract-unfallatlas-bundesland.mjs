@@ -59,6 +59,7 @@ async function main() {
         sourcePath,
         stagedPath,
         bundeslandCode,
+        options.onlyBikePedestrian,
       );
 
       totalRows += result.totalRows;
@@ -74,12 +75,23 @@ async function main() {
     await fs.promises.rm(stagedDirectory, { recursive: true, force: true });
   }
 
+  const filterSummary = options.onlyBikePedestrian
+    ? `ULAND=${bundeslandCode} with a bicycle or pedestrian involved`
+    : `ULAND=${bundeslandCode}`;
+
   console.info(
     `Done. Wrote ${sourceFiles.length} filtered CSV file(s) to ${targetDirectory}.`,
   );
   console.info(
-    `Total rows kept: ${keptRows} of ${totalRows} for ULAND=${bundeslandCode}.`,
+    `Total rows kept: ${keptRows} of ${totalRows} for ${filterSummary}.`,
   );
+
+  if (keptRows === 0) {
+    console.warn(
+      `Warning: no rows matched ${filterSummary}. ` +
+        `Check the --bundesland value and that the source files cover that state.`,
+    );
+  }
 }
 
 function parseArguments(argumentsList) {
@@ -87,6 +99,7 @@ function parseArguments(argumentsList) {
     sourceDirectory: DEFAULT_SOURCE_DIRECTORY,
     targetDirectory: DEFAULT_TARGET_DIRECTORY,
     bundesland: DEFAULT_BUNDESLAND,
+    onlyBikePedestrian: false,
   };
 
   for (let index = 0; index < argumentsList.length; index += 1) {
@@ -129,6 +142,11 @@ function parseArguments(argumentsList) {
       continue;
     }
 
+    if (argument === '--only-bike-pedestrian') {
+      parsed.onlyBikePedestrian = true;
+      continue;
+    }
+
     throw new Error(`Unknown argument: ${argument}`);
   }
 
@@ -151,6 +169,7 @@ Options:
   --bundesland <name-or-code>  Bundesland name or 2-digit ULAND code (default: ${DEFAULT_BUNDESLAND})
   --source-dir <path>          Directory with raw CSV files (default: ${DEFAULT_SOURCE_DIRECTORY})
   --target-dir <path>          Directory for filtered CSV files (default: ${DEFAULT_TARGET_DIRECTORY})
+  --only-bike-pedestrian       Keep only rows involving a bicycle or pedestrian (IstRad/IstFuss)
   --help                       Show this help
 `);
   process.exit(0);
@@ -253,6 +272,7 @@ async function extractBundeslandRowsFromFile(
   sourcePath,
   targetPath,
   bundeslandCode,
+  onlyBikePedestrian,
 ) {
   const readStream = fs.createReadStream(sourcePath, { encoding: 'utf8' });
   const writeStream = fs.createWriteStream(targetPath, { encoding: 'utf8' });
@@ -264,6 +284,8 @@ async function extractBundeslandRowsFromFile(
   let totalRows = 0;
   let keptRows = 0;
   let ulandColumnIndex = null;
+  let bikeColumnIndex = null;
+  let pedestrianColumnIndex = null;
   let pendingRecord = '';
   let recordNumber = 0;
 
@@ -287,6 +309,17 @@ async function extractBundeslandRowsFromFile(
         }
 
         ulandColumnIndex = resolvedIndex;
+
+        if (onlyBikePedestrian) {
+          bikeColumnIndex = headerColumns.indexOf('IstRad');
+          pedestrianColumnIndex = headerColumns.indexOf('IstFuss');
+          if (bikeColumnIndex < 0 || pedestrianColumnIndex < 0) {
+            throw new Error(
+              `Missing IstRad/IstFuss column in ${sourcePath}; cannot apply --only-bike-pedestrian.`,
+            );
+          }
+        }
+
         writeStream.write(`${csvRecord}\n`);
         continue;
       }
@@ -304,10 +337,20 @@ async function extractBundeslandRowsFromFile(
 
       totalRows += 1;
       const stateCode = normalizeUlandCode(values[ulandColumnIndex]);
-      if (stateCode === bundeslandCode) {
-        writeStream.write(`${csvRecord}\n`);
-        keptRows += 1;
+      if (stateCode !== bundeslandCode) {
+        continue;
       }
+
+      if (
+        onlyBikePedestrian &&
+        !isPositiveFlag(values[bikeColumnIndex]) &&
+        !isPositiveFlag(values[pedestrianColumnIndex])
+      ) {
+        continue;
+      }
+
+      writeStream.write(`${csvRecord}\n`);
+      keptRows += 1;
     }
 
     if (pendingRecord.length > 0) {
@@ -349,6 +392,11 @@ function isCompleteCsvRecord(record) {
   }
 
   return !insideQuotes;
+}
+
+function isPositiveFlag(value) {
+  const parsed = Number.parseInt(cleanCsvValue(value ?? ''), 10);
+  return Number.isFinite(parsed) && parsed > 0;
 }
 
 function normalizeUlandCode(value) {

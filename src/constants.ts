@@ -23,6 +23,15 @@ export const UNFALLATLAS_CSV_PATH_TEMPLATES = [
 export const UNFALLATLAS_SOURCE_NAME =
   'Unfallatlas (Datenlizenz Deutschland – Namensnennung – Version 2.0)';
 
+// "Karlsruhe" scope for the Unfallatlas data: Regierungsbezirk Karlsruhe
+// (UREGBEZ 2) restricted to the Stadtkreis (UKREIS 12) and Landkreis (UKREIS 15)
+// Karlsruhe. The shipped CSVs already cover all of Baden-Württemberg; this filter
+// is applied client-side to derive the Karlsruhe view.
+export const UNFALLATLAS_KARLSRUHE_REGION = {
+  uregbez: 2,
+  ukreise: [12, 15],
+} as const;
+
 // GeoPackage configuration
 export const GEOPACKAGE_FILE_NAME =
   'unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg';

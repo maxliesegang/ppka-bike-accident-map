@@ -1,6 +1,9 @@
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../../constants';
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
-import type { DataSourceId } from '../../map/data-source-types';
+import {
+  isUnfallatlasSource,
+  type DataSourceId,
+} from '../../map/data-source-types';
 
 const accidentTypeLabels = new Map<AccidentType, string>(
   ACCIDENT_LEGENDS.map(({ type, description }) => [type, description]),
@@ -30,7 +33,7 @@ const HOTSPOT_CAVEAT_UNFALLATLAS_INJURY_ONLY =
  * active data source (see the roadmap's data-methodology notes).
  */
 export function getHotspotCaveat(dataSourceId: DataSourceId): string {
-  return dataSourceId === 'unfallatlas'
+  return isUnfallatlasSource(dataSourceId)
     ? `${HOTSPOT_CAVEAT_UNFALLATLAS_INJURY_ONLY} ${HOTSPOT_CAVEAT_BASE}`
     : HOTSPOT_CAVEAT_BASE;
 }

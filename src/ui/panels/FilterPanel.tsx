@@ -9,7 +9,10 @@ import {
   KernRadioGroup,
   KernText,
 } from '@kern-ux-annex/kern-react-kit';
-import { isDataSourceId } from '../../map/data-source-types';
+import {
+  isDataSourceId,
+  isUnfallatlasSource,
+} from '../../map/data-source-types';
 import {
   getSelectedDataSourceId,
   subscribeToDataSourceId,
@@ -30,6 +33,7 @@ const GITHUB_URL = 'https://github.com/maxliesegang/ppka-bike-accident-map';
 
 const DATA_SOURCE_OPTIONS = [
   { value: 'local', label: 'FragDenStaat Anfrage (Karlsruhe)' },
+  { value: 'unfallatlas-karlsruhe', label: 'Unfallatlas (Karlsruhe)' },
   { value: 'unfallatlas', label: 'Unfallatlas (bundesweit)' },
 ];
 
@@ -116,11 +120,13 @@ export function FilterPanel({ map }: { map: L.Map }) {
         />
       ) : (
         <KernText type="body" muted className="cp__hint">
-          Bundesweite OpenData, unten nach Jahr einschränkbar.
+          {selectedDataSourceId === 'unfallatlas-karlsruhe'
+            ? 'Unfallatlas-OpenData, eingegrenzt auf Stadt- und Landkreis Karlsruhe. Unten nach Jahr einschränkbar.'
+            : 'Bundesweite OpenData, unten nach Jahr einschränkbar.'}
         </KernText>
       )}
 
-      {selectedDataSourceId === 'unfallatlas' && (
+      {isUnfallatlasSource(selectedDataSourceId) && (
         <>
           <KernDivider spacing="small" />
           <KernFieldset label="Jahre">
