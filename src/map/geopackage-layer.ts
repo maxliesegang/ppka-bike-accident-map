@@ -2,13 +2,13 @@ import { GeoPackage } from '@ngageoint/geopackage';
 import * as L from 'leaflet';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
-import { createAndRegisterGeoPackageAccidentMarker } from './marker-factory';
+import { createAndRegisterGeoPackageAccidentMarker } from './accident-marker-factory';
 import {
   beginAccidentMarkerBatch,
   clearAccidentMarkersForSource,
   endAccidentMarkerBatch,
   attachLocalAccidentMarkers,
-} from './marker-store';
+} from './accident-marker-store';
 
 export async function loadGeoPackageMarkers(map: L.Map): Promise<void> {
   try {

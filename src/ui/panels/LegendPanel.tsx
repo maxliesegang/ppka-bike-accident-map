@@ -20,10 +20,10 @@ import {
 import {
   getSelectedAccidentTypes,
   getSelectedSeverityTypes,
-  setAccidentTypeFilterSelected,
-  setSeverityTypeFilterSelected,
+  setAccidentTypeSelected,
+  setSeverityTypeSelected,
   subscribeToAccidentMarkerFilters,
-} from '../../map/marker-store';
+} from '../../map/accident-marker-store';
 import { PanelFrame } from './PanelFrame';
 
 /**
@@ -71,7 +71,7 @@ export function LegendPanel() {
               label={description}
               checked={accidentSelection.has(type)}
               onChange={(event) =>
-                setAccidentTypeFilterSelected(type, event.target.checked)
+                setAccidentTypeSelected(type, event.target.checked)
               }
             />
           </div>
@@ -96,7 +96,7 @@ export function LegendPanel() {
                 label={description}
                 checked={severitySelection.has(type)}
                 onChange={(event) =>
-                  setSeverityTypeFilterSelected(type, event.target.checked)
+                  setSeverityTypeSelected(type, event.target.checked)
                 }
               />
             </div>

@@ -108,8 +108,8 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
     - `unfallatlas-loader.ts` — parses yearly Unfallatlas CSV files and maps rows to existing accident/severity categories.
     - `unfallatlas-layer.ts` — lazy-loads and toggles the Unfallatlas marker layer.
     - `data-source-store.ts` — toggles between local and Unfallatlas data sources.
-    - `marker-factory.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
-    - `marker-store.ts` — manages marker visibility based on selected accident/severity filters.
+    - `accident-marker-factory.ts` — creates `CircleMarker` from a GeoJSON feature and registers it.
+    - `accident-marker-store.ts` — manages marker visibility based on selected accident/severity filters.
     - `panel-controls.ts` — attaches custom Leaflet controls for React-rendered panels.
     - `popup-renderer.tsx` — renders React popup content for marker clicks.
   - **`ui/`**: React controls, panels, and popup components used inside Leaflet controls/popups.

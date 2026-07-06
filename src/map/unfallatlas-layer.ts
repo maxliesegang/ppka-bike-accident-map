@@ -5,7 +5,7 @@ import {
   endAccidentMarkerBatch,
   attachAccidentMarkersForSource,
   detachAccidentMarkersForSource,
-} from './marker-store';
+} from './accident-marker-store';
 import {
   getAvailableUnfallatlasYears,
   loadUnfallatlasMarkersForYears,
@@ -33,9 +33,8 @@ const state: UnfallatlasLayerState = {
 
 const unfallatlasYearListeners = new Set<() => void>();
 
-export async function fetchUnfallatlasAvailableYears(): Promise<number[]> {
-  return getAvailableUnfallatlasYears();
-}
+// Re-exported so UI panels depend only on this layer facade, not the loader.
+export { getAvailableUnfallatlasYears };
 
 export function getSelectedUnfallatlasYears(): readonly number[] {
   return state.selectedYears;
@@ -155,7 +154,7 @@ async function ensureYearSelectionInitialized(): Promise<void> {
   }
 
   if (!state.yearSelectionInitializationPromise) {
-    state.yearSelectionInitializationPromise = fetchUnfallatlasAvailableYears()
+    state.yearSelectionInitializationPromise = getAvailableUnfallatlasYears()
       .then((availableYears) => {
         updateSelectedYears(
           !state.hasInitializedYearSelection && state.selectedYears.length === 0

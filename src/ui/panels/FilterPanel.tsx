@@ -16,7 +16,7 @@ import {
   setSelectedDataSourceId,
 } from '../../map/data-source-store';
 import {
-  fetchUnfallatlasAvailableYears,
+  getAvailableUnfallatlasYears,
   getSelectedUnfallatlasYears,
   setSelectedUnfallatlasYears,
   setUnfallatlasYearSelected,
@@ -56,7 +56,7 @@ export function FilterPanel({ map }: { map: L.Map }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchUnfallatlasAvailableYears()
+    getAvailableUnfallatlasYears()
       .then((years) => {
         if (cancelled) return;
         setAvailableYears(years);

@@ -9,7 +9,7 @@ Guidance for contributors and coding agents working in this repository.
 - GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer.ts`.
 - Style/type definitions: `src/data/accident-styles.ts` — single source of truth for `AccidentType`, `SeverityType`, colors, and radii.
 - Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom Leaflet controls with React-rendered panels (not `L.control.layers`).
-- Filter state: `src/map/marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
+- Filter state: `src/map/accident-marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
 
 ## Architecture Notes
 

@@ -5,7 +5,7 @@ import {
 import {
   attachAccidentMarkersForSource,
   detachAccidentMarkersForSource,
-} from './marker-store';
+} from './accident-marker-store';
 import { type DataSourceId } from './data-source-types';
 
 let selectedDataSourceId: DataSourceId = 'local';

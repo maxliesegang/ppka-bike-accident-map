@@ -8,7 +8,7 @@ import { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   AccidentMarkerData,
   createAndRegisterAccidentMarker,
-} from './marker-factory';
+} from './accident-marker-factory';
 
 const REQUIRED_COLUMNS = [
   'UJAHR',

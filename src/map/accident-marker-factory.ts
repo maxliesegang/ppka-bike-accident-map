@@ -8,7 +8,7 @@ import {
 } from '../features/accident-classification';
 import { renderAccidentPopup } from './popup-renderer';
 import { type DataSourceId } from './data-source-types';
-import { registerAccidentMarker } from './marker-store';
+import { registerAccidentMarker } from './accident-marker-store';
 
 export interface AccidentMarkerData {
   latitude: number;
