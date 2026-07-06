@@ -68,15 +68,18 @@ export function AccidentPopup({ properties }: AccidentPopupProps) {
 
       <KernDivider spacing="small" />
 
-      <section className="popup-details-section" aria-label="Alle Angaben">
-        <KernHeading level={4} size="small">
-          Alle Angaben
-        </KernHeading>
+      <details className="popup-disclosure">
+        <summary className="popup-disclosure__summary">
+          <span className="popup-disclosure__title">Alle Angaben</span>
+          <span className="popup-disclosure__count">
+            {Object.keys(viewModel.details).length} Felder
+          </span>
+        </summary>
         <KernDescriptionList
           details={viewModel.details}
           className="popup-details"
         />
-      </section>
+      </details>
     </div>
   );
 }

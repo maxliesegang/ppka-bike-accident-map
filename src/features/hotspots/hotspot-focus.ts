@@ -16,6 +16,7 @@ export function focusHotspot(
   map: L.Map,
   hotspot: Hotspot,
   dataSourceId: DataSourceId,
+  rank: number,
 ): void {
   const target: L.LatLngExpression = [hotspot.lat, hotspot.lng];
   const targetZoom = Math.max(map.getZoom(), HOTSPOT_FOCUS_ZOOM);
@@ -23,6 +24,6 @@ export function focusHotspot(
   map.flyTo(target, targetZoom);
   L.popup(ACCIDENT_POPUP_OPTIONS)
     .setLatLng(target)
-    .setContent(renderHotspotPopup(hotspot, dataSourceId))
+    .setContent(renderHotspotPopup(hotspot, dataSourceId, rank))
     .openOn(map);
 }

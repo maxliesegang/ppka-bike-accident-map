@@ -144,7 +144,8 @@ function describeTime(properties: Record<string, unknown>): string | null {
     dateParts.push(MONTH_NAMES[month - 1]);
   }
   if (year !== null) {
-    dateParts.push(formatNumber(year));
+    // A year is a plain label, not a quantity — no thousands separator.
+    dateParts.push(String(year));
   }
 
   const timeParts = [...dateParts];

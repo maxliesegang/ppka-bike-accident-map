@@ -1,4 +1,5 @@
 import {
+  KernAlert,
   KernDescriptionList,
   KernDivider,
   KernHeading,
@@ -7,8 +8,9 @@ import {
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
 import {
   getHotspotCaveat,
-  formatAccidentCount,
+  formatCount,
   getAccidentTypeLabel,
+  getAccidentUnit,
   getSeverityTypeLabel,
 } from '../../features/hotspots/hotspot-labels';
 import type { Hotspot } from '../../features/hotspots/hotspot-types';
@@ -17,18 +19,20 @@ import type { DataSourceId } from '../../map/data-source-types';
 interface HotspotPopupProps {
   hotspot: Hotspot;
   dataSourceId: DataSourceId;
+  rank: number;
 }
 
 /**
  * Content for the popup opened when a leaderboard row is selected. Summarizes a
  * single hotspot — its total and its breakdown by accident type and severity —
- * reusing the marker popup's Kern layout so both read as one system. Rendered to
- * a static HTML string by `renderHotspotPopup`.
+ * reusing the marker popup's Kern layout so both read as one system. The rank
+ * chip mirrors the leaderboard row that opened it, so the click-through reads as
+ * one continuous gesture. Rendered to a static HTML string by `renderHotspotPopup`.
  */
-export function HotspotPopup({ hotspot, dataSourceId }: HotspotPopupProps) {
+export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps) {
   return (
     <div className="popup-container">
-      <header className="popup-header">
+      <header className="popup-header popup-header--with-status">
         <div className="popup-title">
           <KernText type="preline" size="small">
             Karlsruhe · Fuß- & Radverkehr
@@ -37,9 +41,15 @@ export function HotspotPopup({ hotspot, dataSourceId }: HotspotPopupProps) {
             Unfallschwerpunkt
           </KernHeading>
         </div>
+        <span className="popup-rank" aria-label={`Platz ${rank}`}>
+          {rank}
+        </span>
       </header>
 
-      <p className="hotspot-popup__count">{formatAccidentCount(hotspot.count)}</p>
+      <p className="popup-hero">
+        <span className="popup-hero__value">{formatCount(hotspot.count)}</span>
+        <span className="popup-hero__unit">{getAccidentUnit(hotspot.count)}</span>
+      </p>
 
       <section className="popup-details-section" aria-label="Nach Unfallart">
         <KernHeading level={4} size="small">
@@ -63,9 +73,13 @@ export function HotspotPopup({ hotspot, dataSourceId }: HotspotPopupProps) {
 
       <KernDivider spacing="small" />
 
-      <KernText type="body" size="small" muted>
+      <KernAlert
+        variant="info"
+        title="Zahlen richtig einordnen"
+        className="popup-caveat"
+      >
         {getHotspotCaveat(dataSourceId)}
-      </KernText>
+      </KernAlert>
     </div>
   );
 }

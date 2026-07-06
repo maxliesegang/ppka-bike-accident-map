@@ -47,6 +47,15 @@ export function getSeverityTypeLabel(type: SeverityType): string {
 }
 
 export function formatAccidentCount(count: number): string {
-  const formatted = countFormatter.format(count);
-  return count === 1 ? `${formatted} Unfall` : `${formatted} Unfälle`;
+  return `${formatCount(count)} ${getAccidentUnit(count)}`;
+}
+
+/** The count on its own, so a hero number can be styled apart from its unit. */
+export function formatCount(count: number): string {
+  return countFormatter.format(count);
+}
+
+/** The grammatically correct unit for a count, shown next to a hero number. */
+export function getAccidentUnit(count: number): string {
+  return count === 1 ? 'Unfall' : 'Unfälle';
 }

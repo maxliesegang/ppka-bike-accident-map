@@ -7,3 +7,4 @@ dist/
 # Raw Unfallatlas source files can be very large.
 data/unfallatlas-raw/*
 !data/unfallatlas-raw/README.md
+docs/analysis-roadmap.md

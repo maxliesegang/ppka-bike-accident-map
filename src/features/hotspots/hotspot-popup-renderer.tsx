@@ -10,8 +10,9 @@ import type { Hotspot } from './hotspot-types';
 export function renderHotspotPopup(
   hotspot: Hotspot,
   dataSourceId: DataSourceId,
+  rank: number,
 ): string {
   return renderToStaticMarkup(
-    <HotspotPopup hotspot={hotspot} dataSourceId={dataSourceId} />,
+    <HotspotPopup hotspot={hotspot} dataSourceId={dataSourceId} rank={rank} />,
   );
 }
