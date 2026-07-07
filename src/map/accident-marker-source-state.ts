@@ -5,6 +5,8 @@ export interface AccidentMarkerEntry {
   marker: L.CircleMarker;
   accidentType: AccidentType;
   severityType: SeverityType;
+  /** Accident year, or `null` when the source carries no usable date. */
+  year: number | null;
 }
 
 export type AccidentMarkerFilterPredicate = (
@@ -34,6 +36,14 @@ export class AccidentMarkerSourceState {
     SeverityType,
     AccidentMarkerEntry[]
   >();
+  private readonly markerEntriesByYear = new Map<
+    number,
+    AccidentMarkerEntry[]
+  >();
+  // Selected years for this source, or `null` when no year filter is active
+  // (every year visible). Applied client-side on top of the type/severity
+  // predicate, so any source gains year filtering without a bespoke pipeline.
+  private yearFilter: ReadonlySet<number> | null = null;
   private map: L.Map | null = null;
   private isRegisteringBatch = false;
   private needsVisibilityRefresh = false;
@@ -42,9 +52,45 @@ export class AccidentMarkerSourceState {
     this.markerEntries.length = 0;
     this.markerEntriesByAccidentType.clear();
     this.markerEntriesBySeverityType.clear();
+    this.markerEntriesByYear.clear();
     this.isRegisteringBatch = false;
     this.needsVisibilityRefresh = false;
     this.visibleMarkersLayer.clearLayers();
+  }
+
+  /** Distinct accident years present in this source, ascending. */
+  getAvailableYears(): number[] {
+    const years = new Set<number>();
+    for (const { year } of this.markerEntries) {
+      if (year !== null) {
+        years.add(year);
+      }
+    }
+    return [...years].sort((a, b) => a - b);
+  }
+
+  getYearFilter(): ReadonlySet<number> | null {
+    return this.yearFilter;
+  }
+
+  /**
+   * Restricts visible markers to `years` (`null` clears the year filter). Only
+   * the year buckets whose membership actually flips are touched, so toggling a
+   * year never rebuilds the whole layer.
+   */
+  setYearFilter(
+    years: ReadonlySet<number> | null,
+    isMarkerSelected: AccidentMarkerFilterPredicate,
+  ): void {
+    const previous = this.yearFilter;
+    this.yearFilter = years;
+
+    for (const year of this.affectedYears(previous, years)) {
+      this.updateMarkerVisibility(
+        this.markerEntriesByYear.get(year) ?? [],
+        isMarkerSelected,
+      );
+    }
   }
 
   beginRegistrationBatch(): void {
@@ -64,16 +110,20 @@ export class AccidentMarkerSourceState {
     marker: L.CircleMarker,
     accidentType: AccidentType,
     severityType: SeverityType,
+    year: number | null,
     isMarkerSelected: AccidentMarkerFilterPredicate,
   ): void {
-    const markerEntry = { marker, accidentType, severityType };
+    const markerEntry = { marker, accidentType, severityType, year };
     this.markerEntries.push(markerEntry);
     addToIndex(this.markerEntriesByAccidentType, accidentType, markerEntry);
     addToIndex(this.markerEntriesBySeverityType, severityType, markerEntry);
+    if (year !== null) {
+      addToIndex(this.markerEntriesByYear, year, markerEntry);
+    }
 
     if (
       !this.isRegisteringBatch &&
-      isMarkerSelected(accidentType, severityType)
+      this.isEntryVisible(markerEntry, isMarkerSelected)
     ) {
       this.visibleMarkersLayer.addLayer(marker);
     }
@@ -133,9 +183,9 @@ export class AccidentMarkerSourceState {
 
     this.visibleMarkersLayer.clearLayers();
 
-    for (const { marker, accidentType, severityType } of this.markerEntries) {
-      if (isMarkerSelected(accidentType, severityType)) {
-        this.visibleMarkersLayer.addLayer(marker);
+    for (const entry of this.markerEntries) {
+      if (this.isEntryVisible(entry, isMarkerSelected)) {
+        this.visibleMarkersLayer.addLayer(entry.marker);
       }
     }
 
@@ -157,16 +207,52 @@ export class AccidentMarkerSourceState {
       return;
     }
 
-    for (const { marker, accidentType, severityType } of markers) {
-      const shouldBeVisible = isMarkerSelected(accidentType, severityType);
-      const isVisible = this.visibleMarkersLayer.hasLayer(marker);
+    for (const entry of markers) {
+      const shouldBeVisible = this.isEntryVisible(entry, isMarkerSelected);
+      const isVisible = this.visibleMarkersLayer.hasLayer(entry.marker);
 
       if (shouldBeVisible && !isVisible) {
-        this.visibleMarkersLayer.addLayer(marker);
+        this.visibleMarkersLayer.addLayer(entry.marker);
       } else if (!shouldBeVisible && isVisible) {
-        this.visibleMarkersLayer.removeLayer(marker);
+        this.visibleMarkersLayer.removeLayer(entry.marker);
       }
     }
+  }
+
+  private isEntryVisible(
+    entry: AccidentMarkerEntry,
+    isMarkerSelected: AccidentMarkerFilterPredicate,
+  ): boolean {
+    return (
+      isMarkerSelected(entry.accidentType, entry.severityType) &&
+      this.isYearVisible(entry.year)
+    );
+  }
+
+  /** Whether this year passes the current year filter (undated stays visible). */
+  isYearVisible(year: number | null): boolean {
+    // Undated markers can't be excluded by a year filter, so they stay visible.
+    return (
+      this.yearFilter === null || year === null || this.yearFilter.has(year)
+    );
+  }
+
+  /** Years whose visibility can differ between the old and new year filters. */
+  private affectedYears(
+    previous: ReadonlySet<number> | null,
+    next: ReadonlySet<number> | null,
+  ): Iterable<number> {
+    if (previous === null || next === null) {
+      // Switching to or from "all years" can flip any dated marker.
+      return this.markerEntriesByYear.keys();
+    }
+    const changed = new Set<number>();
+    for (const year of this.markerEntriesByYear.keys()) {
+      if (previous.has(year) !== next.has(year)) {
+        changed.add(year);
+      }
+    }
+    return changed;
   }
 }
 

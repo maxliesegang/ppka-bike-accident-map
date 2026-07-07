@@ -445,6 +445,7 @@ function mapToMarkerData(
     longitude,
     accidentType: mapAccidentType(flags),
     severityType,
+    year,
     popupProperties: () => ({
       Quelle: UNFALLATLAS_SOURCE_NAME,
       Jahr: year,

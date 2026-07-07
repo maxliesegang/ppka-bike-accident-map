@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import type * as L from 'leaflet';
 import {
   KernButton,
@@ -18,13 +18,12 @@ import {
   subscribeToDataSourceId,
   setSelectedDataSourceId,
 } from '../../map/data-source-store';
+import { unfallatlasYearFilterController } from '../../map/unfallatlas-layer';
+import { localYearFilterController } from '../../map/accident-marker-store';
 import {
-  getAvailableUnfallatlasYears,
-  getSelectedUnfallatlasYears,
-  setSelectedUnfallatlasYears,
-  setUnfallatlasYearSelected,
-  subscribeToUnfallatlasYears,
-} from '../../map/unfallatlas-layer';
+  resolveYearMessage,
+  type YearFilterController,
+} from '../../map/year-filter';
 import { PanelFrame } from './PanelFrame';
 
 const FRAG_DEN_STAAT_REQUEST_URL =
@@ -38,56 +37,23 @@ const DATA_SOURCE_OPTIONS = [
 ];
 
 /**
- * Top-right panel with the query controls: which data source to show and, for
- * Unfallatlas, which years. The visual key for the markers lives separately in
- * the bottom-left legend panel.
+ * Top-right panel with the query controls: which data source to show and which
+ * years to include. The visual key for the markers lives separately in the
+ * bottom-left legend panel.
  */
 export function FilterPanel({ map }: { map: L.Map }) {
   const selectedDataSourceId = useSyncExternalStore(
     subscribeToDataSourceId,
     getSelectedDataSourceId,
   );
-  const selectedYears = useSyncExternalStore(
-    subscribeToUnfallatlasYears,
-    getSelectedUnfallatlasYears,
-  );
-  const [availableYears, setAvailableYears] = useState<readonly number[]>([]);
-  const [yearsMessage, setYearsMessage] = useState('Jahre werden geladen …');
-  const selectedYearSet = useMemo(
-    () => new Set(selectedYears),
-    [selectedYears],
-  );
 
-  useEffect(() => {
-    let cancelled = false;
-    getAvailableUnfallatlasYears()
-      .then((years) => {
-        if (cancelled) return;
-        setAvailableYears(years);
-        if (years.length > 0 && getSelectedUnfallatlasYears().length === 0) {
-          setSelectedUnfallatlasYears(years);
-        }
-        setYearsMessage(
-          years.length === 0 ? 'Keine Unfallatlas-Jahre gefunden.' : '',
-        );
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setYearsMessage('Jahre konnten nicht geladen werden.');
-        console.error('Error loading Unfallatlas years:', error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const toggleYear = (year: number, selected: boolean) => {
-    setUnfallatlasYearSelected(year, selected);
-  };
-
-  const applyYears = (years: readonly number[]) => {
-    setSelectedUnfallatlasYears(years);
-  };
+  // Each source backs its year filter differently, but exposes the same
+  // controller — so the panel just picks the active one and stays backend-agnostic.
+  const yearController = isUnfallatlasSource(selectedDataSourceId)
+    ? unfallatlasYearFilterController
+    : localYearFilterController;
+  const { availableYears, selectedYears, selectedYearSet, yearMessage } =
+    useYearFilter(yearController);
 
   const changeSelectedDataSource = (value: string) => {
     if (isDataSourceId(value)) {
@@ -126,42 +92,42 @@ export function FilterPanel({ map }: { map: L.Map }) {
         </KernText>
       )}
 
-      {isUnfallatlasSource(selectedDataSourceId) && (
-        <>
-          <KernDivider spacing="small" />
-          <KernFieldset label="Jahre">
-            <div className="cp__year-actions">
-              <KernButton
-                label="Alle"
-                variant="tertiary"
-                type="button"
-                onClick={() => applyYears(availableYears)}
-              />
-              <KernButton
-                label="Keine"
-                variant="tertiary"
-                type="button"
-                onClick={() => applyYears([])}
-              />
-            </div>
-            <div className="cp__year-grid">
-              {availableYears.map((year) => (
-                <KernCheckbox
-                  key={year}
-                  id={`ua-year-${year}`}
-                  label={String(year)}
-                  checked={selectedYearSet.has(year)}
-                  onChange={(event) => toggleYear(year, event.target.checked)}
-                />
-              ))}
-            </div>
-            <KernText type="body" muted className="cp__hint" aria-live="polite">
-              {yearsMessage ||
-                yearStatusText(availableYears.length, selectedYears.length)}
-            </KernText>
-          </KernFieldset>
-        </>
-      )}
+      {/* All sources are year-filterable: Unfallatlas via its CSV loader,
+          the FragDenStaat (local) source via the client-side year dimension. */}
+      <KernDivider spacing="small" />
+      <KernFieldset label="Jahre">
+        <div className="cp__year-actions">
+          <KernButton
+            label="Alle"
+            variant="tertiary"
+            type="button"
+            onClick={() => yearController.setSelectedYears(availableYears)}
+          />
+          <KernButton
+            label="Keine"
+            variant="tertiary"
+            type="button"
+            onClick={() => yearController.setSelectedYears([])}
+          />
+        </div>
+        <div className="cp__year-grid">
+          {availableYears.map((year) => (
+            <KernCheckbox
+              key={year}
+              id={`year-${year}`}
+              label={String(year)}
+              checked={selectedYearSet.has(year)}
+              onChange={(event) =>
+                yearController.setYearSelected(year, event.target.checked)
+              }
+            />
+          ))}
+        </div>
+        <KernText type="body" muted className="cp__hint" aria-live="polite">
+          {yearMessage ||
+            yearSelectionSummary(availableYears.length, selectedYears.length)}
+        </KernText>
+      </KernFieldset>
 
       <KernDivider spacing="small" />
 
@@ -178,7 +144,39 @@ export function FilterPanel({ map }: { map: L.Map }) {
   );
 }
 
-function yearStatusText(availableCount: number, selectedCount: number): string {
+/**
+ * Reads a year filter controller into render-ready values. Both hooks re-run when
+ * the controller changes (data source switch) and re-subscribe automatically.
+ */
+function useYearFilter(controller: YearFilterController) {
+  const availableYears = useSyncExternalStore(
+    controller.subscribe,
+    controller.getAvailableYears,
+  );
+  const selectedYears = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSelectedYears,
+  );
+  const status = useSyncExternalStore(
+    controller.subscribe,
+    controller.getStatus,
+  );
+  const selectedYearSet = useMemo(
+    () => new Set(selectedYears),
+    [selectedYears],
+  );
+  const yearMessage = resolveYearMessage(
+    controller,
+    status,
+    availableYears.length,
+  );
+  return { availableYears, selectedYears, selectedYearSet, yearMessage };
+}
+
+function yearSelectionSummary(
+  availableCount: number,
+  selectedCount: number,
+): string {
   if (availableCount === 0) {
     return 'Keine Jahre verfügbar.';
   }

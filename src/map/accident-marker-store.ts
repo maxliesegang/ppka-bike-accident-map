@@ -7,6 +7,11 @@ import {
   type AccidentMarkerEntry,
 } from './accident-marker-source-state';
 import { FilterSelection } from './filter-selection';
+import {
+  areYearsEqual,
+  toggleYear,
+  type YearFilterController,
+} from './year-filter';
 
 const accidentMarkerStateBySource: Record<
   DataSourceId,
@@ -79,12 +84,14 @@ export function registerAccidentMarker(
   marker: L.CircleMarker,
   accidentType: AccidentType,
   severityType: SeverityType,
+  year: number | null,
   dataSourceId: DataSourceId = 'local',
 ): void {
   accidentMarkerStateBySource[dataSourceId].registerMarker(
     marker,
     accidentType,
     severityType,
+    year,
     isMarkerSelected,
   );
 }
@@ -180,7 +187,94 @@ function notifyAccidentMarkerFiltersChanged(): void {
 }
 
 function notifyAccidentMarkerDataChanged(): void {
+  recomputeLocalYearCaches();
   for (const listener of accidentMarkerDataListeners) {
+    listener();
+  }
+}
+
+// --- Year filter (local source) -------------------------------------------
+// Year is a client-side, data-driven filter dimension. The generic mechanism
+// lives in AccidentMarkerSourceState, so any source could use it; only the
+// single-file `local` (FragDenStaat) source is wired to the year UI, because
+// the Unfallatlas sources filter years at load time via their CSV pipeline.
+
+const LOCAL_SOURCE_ID: DataSourceId = 'local';
+const yearFilterListeners = new Set<() => void>();
+// Cached snapshots so `useSyncExternalStore` sees stable identities between
+// changes. Recomputed only when the marker set or year selection moves.
+let localAvailableYears: readonly number[] = [];
+let localSelectedYears: readonly number[] = [];
+
+/**
+ * Whether a marker of this year passes the source's year filter. Analytics
+ * consumers (e.g. the hotspot ranking) use it to mirror the year selection that
+ * the map applies. Sources without a year filter report every year as visible.
+ */
+export function isAccidentYearVisible(
+  dataSourceId: DataSourceId,
+  year: number | null,
+): boolean {
+  return accidentMarkerStateBySource[dataSourceId].isYearVisible(year);
+}
+
+/** The local source's year filter, exposed to the UI via a uniform controller. */
+export const localYearFilterController: YearFilterController = {
+  subscribe(listener) {
+    yearFilterListeners.add(listener);
+    return () => {
+      yearFilterListeners.delete(listener);
+    };
+  },
+  // Local years derive from the loaded GeoPackage, so "no years yet" simply
+  // means the data is still loading; this source never fails on its own.
+  getStatus: () => (localAvailableYears.length > 0 ? 'ready' : 'loading'),
+  getAvailableYears: () => localAvailableYears,
+  getSelectedYears: () => localSelectedYears,
+  setSelectedYears: setLocalSelectedYears,
+  setYearSelected: setLocalYearSelected,
+  messages: {
+    loading: 'Jahre werden geladen …',
+    empty: 'Keine Jahre verfügbar.',
+    error: '',
+  },
+};
+
+function setLocalSelectedYears(years: readonly number[]): void {
+  const available = new Set(localAvailableYears);
+  const selected = new Set(years.filter((year) => available.has(year)));
+  // Full selection is represented as "no filter" so newly loaded years stay
+  // visible by default.
+  const filter = selected.size === available.size ? null : selected;
+  accidentMarkerStateBySource[LOCAL_SOURCE_ID].setYearFilter(
+    filter,
+    isMarkerSelected,
+  );
+  recomputeLocalYearCaches();
+}
+
+function setLocalYearSelected(year: number, selected: boolean): void {
+  setLocalSelectedYears(toggleYear(localSelectedYears, year, selected));
+}
+
+function recomputeLocalYearCaches(): void {
+  const available =
+    accidentMarkerStateBySource[LOCAL_SOURCE_ID].getAvailableYears();
+  const filter = accidentMarkerStateBySource[LOCAL_SOURCE_ID].getYearFilter();
+  const selected =
+    filter === null ? available : available.filter((year) => filter.has(year));
+
+  if (!areYearsEqual(available, localAvailableYears)) {
+    localAvailableYears = available;
+  }
+  if (!areYearsEqual(selected, localSelectedYears)) {
+    localSelectedYears = selected;
+  }
+  notifyYearFilterChanged();
+}
+
+function notifyYearFilterChanged(): void {
+  for (const listener of yearFilterListeners) {
     listener();
   }
 }

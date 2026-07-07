@@ -32,7 +32,11 @@ interface HotspotPopupProps {
  * chip mirrors the leaderboard row that opened it, so the click-through reads as
  * one continuous gesture. Rendered to a static HTML string by `renderHotspotPopup`.
  */
-export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps) {
+export function HotspotPopup({
+  hotspot,
+  dataSourceId,
+  rank,
+}: HotspotPopupProps) {
   return (
     <div className="popup-container">
       <header className="popup-header popup-header--with-status">
@@ -51,12 +55,14 @@ export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps)
 
       <p className="popup-hero">
         <span className="popup-hero__value">{formatCount(hotspot.count)}</span>
-        <span className="popup-hero__unit">{getAccidentUnit(hotspot.count)}</span>
+        <span className="popup-hero__unit">
+          {getAccidentUnit(hotspot.count)}
+        </span>
       </p>
 
       <KernText type="body" size="small" muted className="popup-hotspot-area">
-        Der Kreis auf der Karte (Radius ca. {roundedRadiusMeters(hotspot)} m) umschließt
-        den Bereich, aus dem diese Unfälle zusammengefasst wurden.
+        Der Kreis auf der Karte (Radius ca. {roundedRadiusMeters(hotspot)} m)
+        umschließt den Bereich, aus dem diese Unfälle zusammengefasst wurden.
       </KernText>
 
       <section className="popup-details-section" aria-label="Nach Unfallart">
@@ -64,7 +70,10 @@ export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps)
           Nach Unfallart
         </KernHeading>
         <KernDescriptionList
-          details={toLabelledCounts(hotspot.accidentTypeCounts, getAccidentTypeLabel)}
+          details={toLabelledCounts(
+            hotspot.accidentTypeCounts,
+            getAccidentTypeLabel,
+          )}
           className="popup-details"
         />
       </section>
@@ -74,7 +83,10 @@ export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps)
           Nach Schweregrad
         </KernHeading>
         <KernDescriptionList
-          details={toLabelledCounts(hotspot.severityTypeCounts, getSeverityTypeLabel)}
+          details={toLabelledCounts(
+            hotspot.severityTypeCounts,
+            getSeverityTypeLabel,
+          )}
           className="popup-details"
         />
       </section>
@@ -108,6 +120,8 @@ function toLabelledCounts<T extends AccidentType | SeverityType>(
   return details;
 }
 
-function sortByCountDescending<T>(counts: ReadonlyMap<T, number>): [T, number][] {
+function sortByCountDescending<T>(
+  counts: ReadonlyMap<T, number>,
+): [T, number][] {
   return [...counts].sort(([, a], [, b]) => b - a);
 }

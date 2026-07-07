@@ -13,6 +13,13 @@ import {
 } from './unfallatlas-loader';
 import { UNFALLATLAS_KARLSRUHE_REGION } from '../constants';
 import { type DataSourceId } from './data-source-types';
+import {
+  areYearsEqual,
+  normalizeYears,
+  toggleYear,
+  type YearFilterController,
+  type YearFilterStatus,
+} from './year-filter';
 
 /**
  * Both Unfallatlas data sources share the same CSVs and layer machinery; they
@@ -58,21 +65,63 @@ const state: UnfallatlasLayerState = {
 
 const unfallatlasYearListeners = new Set<() => void>();
 
-// Re-exported so UI panels depend only on this layer facade, not the loader.
-export { getAvailableUnfallatlasYears };
+// Available years come from a manifest fetch; the snapshot lets the year UI read
+// them synchronously (via the controller) once loaded. Both Unfallatlas sources
+// share the same yearly files, so a single availability snapshot serves both.
+let availableYearsSnapshot: readonly number[] = [];
+let availableYearsStatus: YearFilterStatus = 'loading';
+let hasStartedAvailableYearsLoad = false;
 
-export function getSelectedUnfallatlasYears(): readonly number[] {
-  return state.selectedYears;
+/**
+ * The Unfallatlas year filter as a uniform controller. Subscribing lazily kicks
+ * off the manifest fetch, so the year list loads exactly when the panel first
+ * needs it rather than on app start.
+ */
+export const unfallatlasYearFilterController: YearFilterController = {
+  subscribe(listener) {
+    ensureAvailableYearsLoaded();
+    unfallatlasYearListeners.add(listener);
+    return () => {
+      unfallatlasYearListeners.delete(listener);
+    };
+  },
+  getStatus: () => availableYearsStatus,
+  getAvailableYears: () => availableYearsSnapshot,
+  getSelectedYears: () => state.selectedYears,
+  setSelectedYears: setSelectedUnfallatlasYears,
+  setYearSelected: setUnfallatlasYearSelected,
+  messages: {
+    loading: 'Jahre werden geladen …',
+    empty: 'Keine Unfallatlas-Jahre gefunden.',
+    error: 'Jahre konnten nicht geladen werden.',
+  },
+};
+
+function ensureAvailableYearsLoaded(): void {
+  if (hasStartedAvailableYearsLoad) {
+    return;
+  }
+  hasStartedAvailableYearsLoad = true;
+  getAvailableUnfallatlasYears()
+    .then((years) => {
+      availableYearsSnapshot = years;
+      availableYearsStatus = 'ready';
+      // Default to every year until the user narrows the range; if a selection
+      // already exists, `updateSelectedYears` leaves it untouched.
+      if (years.length > 0 && state.selectedYears.length === 0) {
+        setSelectedUnfallatlasYears(years);
+      } else {
+        notifyYearSelectionChanged();
+      }
+    })
+    .catch((error: unknown) => {
+      availableYearsStatus = 'error';
+      console.error('Error loading Unfallatlas years:', error);
+      notifyYearSelectionChanged();
+    });
 }
 
-export function subscribeToUnfallatlasYears(listener: () => void): () => void {
-  unfallatlasYearListeners.add(listener);
-  return () => {
-    unfallatlasYearListeners.delete(listener);
-  };
-}
-
-export function setSelectedUnfallatlasYears(years: readonly number[]): void {
+function setSelectedUnfallatlasYears(years: readonly number[]): void {
   const hasSelectionChanged = updateSelectedYears(years, true);
 
   if (state.isLayerVisible && hasSelectionChanged) {
@@ -80,18 +129,8 @@ export function setSelectedUnfallatlasYears(years: readonly number[]): void {
   }
 }
 
-export function setUnfallatlasYearSelected(
-  year: number,
-  selected: boolean,
-): void {
-  const nextYears = new Set(state.selectedYears);
-  if (selected) {
-    nextYears.add(year);
-  } else {
-    nextYears.delete(year);
-  }
-
-  setSelectedUnfallatlasYears([...nextYears]);
+function setUnfallatlasYearSelected(year: number, selected: boolean): void {
+  setSelectedUnfallatlasYears(toggleYear(state.selectedYears, year, selected));
 }
 
 export function showUnfallatlasLayer(
@@ -240,35 +279,6 @@ function notifyYearSelectionChanged(): void {
   for (const listener of unfallatlasYearListeners) {
     listener();
   }
-}
-
-function normalizeYears(years: readonly number[]): number[] {
-  const uniqueYears = new Set<number>();
-
-  for (const year of years) {
-    if (Number.isInteger(year)) {
-      uniqueYears.add(year);
-    }
-  }
-
-  return [...uniqueYears].sort((a, b) => a - b);
-}
-
-function areYearsEqual(
-  left: readonly number[],
-  right: readonly number[],
-): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 function toSelectionKey(

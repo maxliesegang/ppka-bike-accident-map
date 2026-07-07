@@ -16,6 +16,8 @@ export interface AccidentMarkerData {
   longitude: number;
   accidentType: AccidentType;
   severityType: SeverityType;
+  /** Accident year used by the year filter; `null` when no date is available. */
+  year: number | null;
   popupProperties: AccidentPopupPropertySource;
 }
 
@@ -41,18 +43,42 @@ export function createAndRegisterGeoPackageAccidentMarker(
     return null;
   }
 
-  const properties = (feature.properties ?? {}) as AccidentProperties;
+  const rawProperties: Record<string, unknown> = feature.properties ?? {};
+  const properties = rawProperties as unknown as AccidentProperties;
+  const year = parseYearFromKoUdatum(rawProperties.KO_UDATUM);
 
   return createAndRegisterAccidentMarker(
     {
       latitude,
       longitude,
-      popupProperties: feature.properties ?? {},
+      // Surface the derived year so the popup's "Zeitpunkt" line works for the
+      // raw GeoPackage records too, alongside the existing detail fields.
+      popupProperties:
+        year === null ? rawProperties : { ...rawProperties, Jahr: year },
       accidentType: getAccidentType(properties),
       severityType: getSeverityType(properties),
+      year,
     },
     dataSourceId,
   );
+}
+
+/**
+ * The GeoPackage stores the accident date as a `YYYYMMDD` integer (e.g.
+ * 20180716) in `KO_UDATUM`; the leading four digits are the year.
+ */
+function parseYearFromKoUdatum(value: unknown): number | null {
+  const digits =
+    typeof value === 'number'
+      ? String(Math.trunc(value))
+      : typeof value === 'string'
+        ? value.trim()
+        : '';
+  if (digits.length < 4) {
+    return null;
+  }
+  const year = Number.parseInt(digits.slice(0, 4), 10);
+  return Number.isInteger(year) ? year : null;
 }
 
 export function createAndRegisterAccidentMarker(
@@ -73,6 +99,7 @@ export function createAndRegisterAccidentMarker(
     marker,
     accidentMarkerData.accidentType,
     accidentMarkerData.severityType,
+    accidentMarkerData.year,
     dataSourceId,
   );
 

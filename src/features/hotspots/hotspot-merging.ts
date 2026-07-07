@@ -90,7 +90,10 @@ function mergeMembers(members: readonly Hotspot[]): Hotspot {
     }
   }
 
-  const centroid: GeoPoint = { lat: latSum / totalCount, lng: lngSum / totalCount };
+  const centroid: GeoPoint = {
+    lat: latSum / totalCount,
+    lng: lngSum / totalCount,
+  };
 
   return {
     id: representative.id,
@@ -125,7 +128,10 @@ function mergedRadiusMeters(
   return radius;
 }
 
-function addCounts<T>(target: Map<T, number>, source: ReadonlyMap<T, number>): void {
+function addCounts<T>(
+  target: Map<T, number>,
+  source: ReadonlyMap<T, number>,
+): void {
   for (const [key, count] of source) {
     target.set(key, (target.get(key) ?? 0) + count);
   }

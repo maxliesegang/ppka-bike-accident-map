@@ -1,6 +1,8 @@
 import {
   getAccidentMarkerEntries,
   isAccidentVisible,
+  isAccidentYearVisible,
+  localYearFilterController,
   subscribeToAccidentMarkerData,
   subscribeToAccidentMarkerFilters,
 } from '../../map/accident-marker-store';
@@ -16,10 +18,10 @@ import type { AccidentRecord, Hotspot } from './hotspot-types';
 /**
  * Derives the ranked "worst spots" leaderboard from what is currently shown on
  * the map: the selected data source, restricted to the accident/severity types
- * the user has enabled. It is a read-through cache — the ranked list is recomputed
- * only when one of those inputs changes (accidents (re)loaded, filters toggled,
- * data source switched), so `getRankedHotspots` returns a referentially stable
- * snapshot suitable for React's `useSyncExternalStore`.
+ * and years the user has enabled. It is a read-through cache — the ranked list is
+ * recomputed only when one of those inputs changes (accidents (re)loaded, filters
+ * or years toggled, data source switched), so `getRankedHotspots` returns a
+ * referentially stable snapshot suitable for React's `useSyncExternalStore`.
  */
 let cachedHotspots: readonly Hotspot[] = [];
 let isDirty = true;
@@ -48,6 +50,9 @@ function computeRankedHotspots(): readonly Hotspot[] {
     if (!isAccidentVisible(entry.accidentType, entry.severityType)) {
       continue;
     }
+    if (!isAccidentYearVisible(dataSourceId, entry.year)) {
+      continue;
+    }
 
     const { lat, lng } = entry.marker.getLatLng();
     records.push({
@@ -71,4 +76,5 @@ function invalidate(): void {
 
 subscribeToAccidentMarkerData(invalidate);
 subscribeToAccidentMarkerFilters(invalidate);
+localYearFilterController.subscribe(invalidate);
 subscribeToDataSourceId(invalidate);

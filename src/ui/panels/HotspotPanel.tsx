@@ -59,7 +59,9 @@ export function HotspotPanel({ map }: { map: L.Map }) {
               <HotspotRow
                 hotspot={hotspot}
                 rank={index + 1}
-                onSelect={() => focusHotspot(map, hotspot, dataSourceId, index + 1)}
+                onSelect={() =>
+                  focusHotspot(map, hotspot, dataSourceId, index + 1)
+                }
               />
             </li>
           ))}
