@@ -13,7 +13,10 @@ import {
   getAccidentUnit,
   getSeverityTypeLabel,
 } from '../../features/hotspots/hotspot-labels';
-import type { Hotspot } from '../../features/hotspots/hotspot-types';
+import {
+  getHotspotDisplayRadiusMeters,
+  type Hotspot,
+} from '../../features/hotspots/hotspot-types';
 import type { DataSourceId } from '../../map/data-source-types';
 
 interface HotspotPopupProps {
@@ -51,6 +54,11 @@ export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps)
         <span className="popup-hero__unit">{getAccidentUnit(hotspot.count)}</span>
       </p>
 
+      <KernText type="body" size="small" muted className="popup-hotspot-area">
+        Der Kreis auf der Karte (Radius ca. {roundedRadiusMeters(hotspot)} m) umschließt
+        den Bereich, aus dem diese Unfälle zusammengefasst wurden.
+      </KernText>
+
       <section className="popup-details-section" aria-label="Nach Unfallart">
         <KernHeading level={4} size="small">
           Nach Unfallart
@@ -82,6 +90,11 @@ export function HotspotPopup({ hotspot, dataSourceId, rank }: HotspotPopupProps)
       </KernAlert>
     </div>
   );
+}
+
+/** The drawn circle's radius, rounded to 5 m — it is an approximate area cue. */
+function roundedRadiusMeters(hotspot: Hotspot): number {
+  return Math.round(getHotspotDisplayRadiusMeters(hotspot) / 5) * 5;
 }
 
 function toLabelledCounts<T extends AccidentType | SeverityType>(

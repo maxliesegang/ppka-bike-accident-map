@@ -1,6 +1,7 @@
-import { greatCircleDistance, gridDisk, UNITS } from 'h3-js';
+import { gridDisk } from 'h3-js';
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
-import type { Hotspot } from './hotspot-types';
+import { distanceMeters } from './hotspot-geometry';
+import type { GeoPoint, Hotspot } from './hotspot-types';
 
 /**
  * Two adjacent hex bins are stitched into one spot only when their accident
@@ -43,7 +44,7 @@ export function mergeAdjacentHotspots(
         continue;
       }
 
-      if (centroidDistanceMeters(hotspot, neighbor) <= maxDistanceMeters) {
+      if (distanceMeters(hotspot, neighbor) <= maxDistanceMeters) {
         unionFind.union(hotspot.id, neighborId);
       }
     }
@@ -65,10 +66,6 @@ export function mergeAdjacentHotspots(
     merged.push(members.length === 1 ? members[0] : mergeMembers(members));
   }
   return merged;
-}
-
-function centroidDistanceMeters(a: Hotspot, b: Hotspot): number {
-  return greatCircleDistance([a.lat, a.lng], [b.lat, b.lng], UNITS.m);
 }
 
 function mergeMembers(members: readonly Hotspot[]): Hotspot {
@@ -93,14 +90,39 @@ function mergeMembers(members: readonly Hotspot[]): Hotspot {
     }
   }
 
+  const centroid: GeoPoint = { lat: latSum / totalCount, lng: lngSum / totalCount };
+
   return {
     id: representative.id,
-    lat: latSum / totalCount,
-    lng: lngSum / totalCount,
+    lat: centroid.lat,
+    lng: centroid.lng,
     count: totalCount,
+    radiusMeters: mergedRadiusMeters(centroid, members),
     accidentTypeCounts,
     severityTypeCounts,
   };
+}
+
+/**
+ * Enclosing radius of the merged spot around its new centroid, without keeping
+ * every member accident's coordinate around: the farthest accident in a member
+ * cell is at most `dist(newCentroid, memberCentroid) + memberRadius` away, so the
+ * max of that bound over all members is guaranteed to enclose the whole cluster.
+ * Slightly conservative (never minimal), which is fine — the circle is an
+ * approximate area cue, not a precise boundary.
+ */
+function mergedRadiusMeters(
+  centroid: GeoPoint,
+  members: readonly Hotspot[],
+): number {
+  let radius = 0;
+  for (const member of members) {
+    const reach = distanceMeters(centroid, member) + member.radiusMeters;
+    if (reach > radius) {
+      radius = reach;
+    }
+  }
+  return radius;
 }
 
 function addCounts<T>(target: Map<T, number>, source: ReadonlyMap<T, number>): void {

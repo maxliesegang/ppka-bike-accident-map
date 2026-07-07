@@ -154,6 +154,12 @@ html {
   font-weight: 600;
 }
 
+/* Explains the area circle drawn around a focused hotspot, sitting between the
+ * hero total and the per-type breakdown. */
+.popup-hotspot-area {
+  margin: 0 0 var(--kern-metric-space-small, 8px);
+}
+
 .popup-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

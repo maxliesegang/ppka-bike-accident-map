@@ -1,6 +1,7 @@
 import { latLngToCell } from 'h3-js';
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
-import type { AccidentRecord, Hotspot } from './hotspot-types';
+import { enclosingRadiusMeters } from './hotspot-geometry';
+import type { AccidentRecord, GeoPoint, Hotspot } from './hotspot-types';
 
 /**
  * H3 resolution used to snap accidents into hotspot bins. Resolution 10 hexagons
@@ -15,6 +16,10 @@ interface HotspotAccumulator {
   count: number;
   latSum: number;
   lngSum: number;
+  // Member positions are retained only for this bin's lifetime so the enclosing
+  // radius can be measured from the final centroid once all members are known;
+  // they are discarded when the Hotspot is emitted.
+  readonly points: GeoPoint[];
   readonly accidentTypeCounts: Map<AccidentType, number>;
   readonly severityTypeCounts: Map<SeverityType, number>;
 }
@@ -44,17 +49,25 @@ export function binAccidentsIntoHotspots(
     accumulator.count += 1;
     accumulator.latSum += record.lat;
     accumulator.lngSum += record.lng;
+    accumulator.points.push({ lat: record.lat, lng: record.lng });
     increment(accumulator.accidentTypeCounts, record.accidentType);
     increment(accumulator.severityTypeCounts, record.severityType);
   }
 
   const hotspots: Hotspot[] = [];
   for (const [cellId, accumulator] of accumulatorByCell) {
-    hotspots.push({
-      id: cellId,
+    const centroid: GeoPoint = {
       lat: accumulator.latSum / accumulator.count,
       lng: accumulator.lngSum / accumulator.count,
+    };
+    hotspots.push({
+      id: cellId,
+      lat: centroid.lat,
+      lng: centroid.lng,
       count: accumulator.count,
+      // The centroid tracks where the accidents are; the radius, how far they
+      // spread around it — together the area the spot actually covers.
+      radiusMeters: enclosingRadiusMeters(centroid, accumulator.points),
       accidentTypeCounts: accumulator.accidentTypeCounts,
       severityTypeCounts: accumulator.severityTypeCounts,
     });
@@ -76,6 +89,7 @@ function getOrCreateAccumulator(
     count: 0,
     latSum: 0,
     lngSum: 0,
+    points: [],
     accidentTypeCounts: new Map(),
     severityTypeCounts: new Map(),
   };
