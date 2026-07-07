@@ -46,8 +46,8 @@ export const ACCIDENT_LEGENDS: { type: AccidentType; description: string }[] = [
     description: 'Fußgänger- und Fahrzeugunfall',
   },
   { type: 'BIKE_AND_PEDESTRIAN', description: 'Fahrrad- und Fußgängerunfall' },
-  { type: 'SINGLE_BIKE', description: 'Unfall nur mit Fahrrädern' },
-  { type: 'BIKE_ONLY', description: 'Fahrradunfall ohne Beteiligte' },
+  { type: 'SINGLE_BIKE', description: 'Fahrradunfall ohne Beteiligte' },
+  { type: 'BIKE_ONLY', description: 'Unfall nur mit Fahrrädern' },
   { type: 'UNKNOWN', description: 'Unbekannter Unfalltyp' },
 ];
 
