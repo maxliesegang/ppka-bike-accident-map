@@ -10,9 +10,9 @@ Recommended workflow:
 
 Examples:
 
-- `opendata2022.csv`
 - `opendata2023.csv`
 - `opendata2024.csv`
+- `opendata2025.csv`
 - `Unfallorte2024.csv`
 - `unfallorte_2021.csv`
 

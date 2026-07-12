@@ -10,7 +10,7 @@ export const TILE_LAYER_ATTRIBUTION =
 
 // Unfallatlas CSV configuration
 // Used as fallback when manifest discovery fails.
-export const UNFALLATLAS_FALLBACK_YEARS = [2022, 2023, 2024] as const;
+export const UNFALLATLAS_FALLBACK_YEARS = [2023, 2024, 2025] as const;
 export const UNFALLATLAS_MANIFEST_FILE = 'unfallatlas/manifest.json';
 export const UNFALLATLAS_CSV_PATH_TEMPLATE = 'unfallatlas/opendata{year}.csv';
 export const UNFALLATLAS_CSV_PATH_TEMPLATES = [
