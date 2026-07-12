@@ -8,7 +8,8 @@
     2021,
     2022,
     2023,
-    2024
+    2024,
+    2025
   ],
   "pathsByYear": {
     "2016": [
@@ -37,6 +38,9 @@
     ],
     "2024": [
       "unfallatlas/opendata2024.csv"
+    ],
+    "2025": [
+      "unfallatlas/opendata2025.csv"
     ]
   }
 }
