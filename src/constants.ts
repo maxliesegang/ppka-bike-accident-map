@@ -4,9 +4,10 @@ import { AccidentType, SeverityType } from './data/accident-styles';
 // Map configuration
 export const MAP_INITIAL_VIEW: LatLngExpression = [49, 8.4];
 export const MAP_ZOOM_LEVEL = 12;
-export const TILE_LAYER_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const TILE_LAYER_URL =
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 export const TILE_LAYER_ATTRIBUTION =
-  '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 // Unfallatlas CSV configuration
 // Used as fallback when manifest discovery fails.
