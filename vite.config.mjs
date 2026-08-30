@@ -16,6 +16,21 @@ const unfallatlasSourceDirectory = path.resolve(
   rootDirectory,
   'data/unfallatlas',
 );
+const ppkaSourceDirectory = path.resolve(rootDirectory, 'data/ppka');
+const localDataAssetDirectories = [
+  {
+    urlPrefix: '/unfallatlas/',
+    sourceDirectory: unfallatlasSourceDirectory,
+    outputDirectory: 'unfallatlas',
+    contentType: 'text/csv; charset=utf-8',
+  },
+  {
+    urlPrefix: '/ppka/',
+    sourceDirectory: ppkaSourceDirectory,
+    outputDirectory: 'ppka',
+    contentType: 'text/csv; charset=utf-8',
+  },
+];
 const emptyModulePath = path.resolve(
   rootDirectory,
   'src/shims/empty-module.js',
@@ -124,10 +139,10 @@ function sendFile(response, sourcePath, contentType) {
   fs.createReadStream(sourcePath).pipe(response);
 }
 
-function resolveUnfallatlasRequest(pathname) {
-  const relativePath = pathname.slice('/unfallatlas/'.length);
-  const sourcePath = path.resolve(unfallatlasSourceDirectory, relativePath);
-  const sourceRoot = `${unfallatlasSourceDirectory}${path.sep}`;
+function resolveDataRequest(sourceDirectory, urlPrefix, pathname) {
+  const relativePath = pathname.slice(urlPrefix.length);
+  const sourcePath = path.resolve(sourceDirectory, relativePath);
+  const sourceRoot = `${sourceDirectory}${path.sep}`;
 
   if (!sourcePath.startsWith(sourceRoot)) {
     return null;
@@ -162,10 +177,22 @@ function localDataAssetsPlugin() {
           return;
         }
 
-        if (pathname.startsWith('/unfallatlas/')) {
-          const sourcePath = resolveUnfallatlasRequest(pathname);
+        for (const {
+          urlPrefix,
+          sourceDirectory,
+          contentType,
+        } of localDataAssetDirectories) {
+          if (!pathname.startsWith(urlPrefix)) {
+            continue;
+          }
+
+          const sourcePath = resolveDataRequest(
+            sourceDirectory,
+            urlPrefix,
+            pathname,
+          );
           if (sourcePath) {
-            sendFile(response, sourcePath, 'text/csv; charset=utf-8');
+            sendFile(response, sourcePath, contentType);
             return;
           }
         }
@@ -176,7 +203,12 @@ function localDataAssetsPlugin() {
     generateBundle() {
       emitAssetFile(this, geopackageSourcePath, GEOPACKAGE_FILE_NAME);
       emitAssetFile(this, geopackageWasmSourcePath, GEOPACKAGE_WASM_FILE);
-      emitDirectoryAssets(this, unfallatlasSourceDirectory, 'unfallatlas');
+      for (const {
+        sourceDirectory,
+        outputDirectory,
+      } of localDataAssetDirectories) {
+        emitDirectoryAssets(this, sourceDirectory, outputDirectory);
+      }
 
       this.emitFile({
         type: 'asset',

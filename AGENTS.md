@@ -7,6 +7,8 @@ Guidance for contributors and coding agents working in this repository.
 - TypeScript + Vite + Leaflet browser app.
 - Entry point: `src/index.ts`.
 - GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer.ts`.
+- Local (FragDenStaat) source: `src/map/local-accident-layer.ts` loads the GeoPackage (2018-2023) and the PPKA CSV (`src/map/ppka-loader.ts`, geocoded years only) into a single registration batch.
+- CSV parsing helpers shared by the PPKA and Unfallatlas loaders: `src/data/csv.ts`.
 - Style/type definitions: `src/data/accident-styles.ts` — single source of truth for `AccidentType`, `SeverityType`, colors, and radii.
 - Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom Leaflet controls with React-rendered panels (not `L.control.layers`).
 - Filter state: `src/map/accident-marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
@@ -16,6 +18,7 @@ Guidance for contributors and coding agents working in this repository.
 - Map uses `preferCanvas: true` for performance — all markers render on a single Canvas element.
 - Markers are `L.circleMarker` instances created directly from GeoJSON coordinates (not via `L.geoJSON`).
 - GeoPackage features are iterated with `for...of` — never materialized into an array.
+- The PPKA CSV is streamed row by row for the same reason; its pre-2024 rows duplicate GeoPackage records (they carry the GeoPackage `UN_KEY` in `Original_Unfall_ID`) and must stay skipped.
 - `tsconfig.json` has `"strict": true` — all code must pass strict type checking.
 
 ## Environment
@@ -43,6 +46,7 @@ npm run build
   - `src/constants.ts` must expose `GEOPACKAGE_WASM_FILE = 'sql-wasm.wasm'`.
   - `vite.config.mjs` must copy `node_modules/@ngageoint/geopackage/dist/sql-wasm.wasm` into `dist`.
   - `vite.config.mjs` must generate and serve `unfallatlas/manifest.json`.
+  - `vite.config.mjs` must serve and emit `data/ppka` under `ppka/`.
   - No remote CDN for WASM.
 
 ## Security Expectations

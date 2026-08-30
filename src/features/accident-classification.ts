@@ -1,14 +1,14 @@
-import { AccidentProperties } from '../data/accident-properties';
-import {
-  AccidentType,
-  getAccidentColor,
-  getSeverityRadius,
-  SeverityType,
-} from '../data/accident-styles';
+import type {
+  AccidentCasualtyTotals,
+  AccidentParticipantCounts,
+  AccidentProperties,
+} from '../data/accident-properties';
+import { getAccidentColor, getSeverityRadius } from '../data/accident-styles';
+import type { AccidentType, SeverityType } from '../data/accident-styles';
 
 type AccidentClassifier = {
   type: AccidentType;
-  matches: (properties: AccidentProperties) => boolean;
+  matches: (properties: AccidentParticipantCounts) => boolean;
 };
 
 type SeverityClassifier = {
@@ -68,7 +68,7 @@ const BASE_CIRCLE_MARKER_STYLE: Pick<
 
 const STYLE_CACHE = new Map<string, L.CircleMarkerOptions>();
 
-export function getAccidentType(p: AccidentProperties): AccidentType {
+export function getAccidentType(p: AccidentParticipantCounts): AccidentType {
   for (const { type, matches } of ACCIDENT_TYPE_CLASSIFIERS) {
     if (matches(p)) {
       return type;
@@ -85,6 +85,26 @@ export function getSeverityType(p: AccidentProperties): SeverityType {
     }
   }
 
+  return 'LOCAL_NO_INJURY';
+}
+
+/**
+ * Severity bucket for a source that reports casualties per accident instead of
+ * per mode of travel (the PPKA CSV). Fatalities share the most severe local
+ * bucket — the local legend has no separate fatality entry — but the popup still
+ * reports the actual `Unfallkategorie`.
+ */
+export function getLocalSeverityTypeFromCasualties({
+  killed,
+  severelyInjured,
+  slightlyInjured,
+}: AccidentCasualtyTotals): SeverityType {
+  if (killed > 0 || severelyInjured > 0) {
+    return 'LOCAL_SEVERE_INJURY';
+  }
+  if (slightlyInjured > 0) {
+    return 'LOCAL_INJURY';
+  }
   return 'LOCAL_NO_INJURY';
 }
 

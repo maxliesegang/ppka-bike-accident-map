@@ -7,6 +7,7 @@ This repository showcases an interactive map application built using **TypeScrip
 - **Canvas-rendered map**: Uses Leaflet's Canvas renderer with direct `CircleMarker` creation for fast rendering of thousands of accident points.
 - **Unified filter control**: Collapsible panel (bottom-left) to toggle data source, available Unfallatlas years, accident types, and severity levels.
 - **GeoPackage support**: Loads local GeoPackage data (`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`) for efficient geospatial operations.
+- **PPKA request data**: Adds the geocoded newer years from the unified Polizeipraesidium-Karlsruhe response (`data/ppka/verkehrsunfaelle_einheitlich_ka_fuss_rad.csv`) to the same local data source, so the FragDenStaat view spans 2018-2025.
 - **Unfallatlas aggregation**: Loads yearly Unfallatlas CSV exports, maps them to existing accident/severity categories, and aggregates them into one view.
 - **Local WASM runtime**: Ships `sql-wasm.wasm` with the build, avoiding runtime CDN dependencies.
 - **Responsive design**: Filter panel collapses on mobile, expands on desktop.
@@ -61,7 +62,7 @@ npm run build
 ```
 
 The bundled files will be available in the `dist` directory.
-This includes Vite-generated JavaScript/CSS assets, `index.html`, `sql-wasm.wasm`, the GeoPackage data file, and optional Unfallatlas CSV files from `data/unfallatlas`.
+This includes Vite-generated JavaScript/CSS assets, `index.html`, `sql-wasm.wasm`, the GeoPackage data file, the PPKA CSV from `data/ppka`, and optional Unfallatlas CSV files from `data/unfallatlas`.
 
 To serve the production build locally:
 
@@ -94,10 +95,11 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
 
 - **`src/`**: Source folder containing TypeScript, CSS, and utility files.
   - **`index.ts`**: Entry point — initializes map, loads data, adds filter control.
-  - **`constants.ts`**: Map config (view, zoom, tiles), GeoPackage paths, filter entry definitions.
+  - **`constants.ts`**: Map config (view, zoom, tiles), GeoPackage and PPKA CSV paths, filter entry definitions.
   - **`styles.css`**: Styles for the map, filter panel, and popups.
   - **`data/`**: Data types and style config.
-    - `accident-properties.ts` — TypeScript interface for accident feature properties.
+    - `accident-properties.ts` — TypeScript interfaces for accident feature properties, participant counts, and casualty totals.
+    - `csv.ts` — shared tokenizer and value parsers for the semicolon-separated CSV exports.
     - `accident-styles.ts` — `AccidentType`/`SeverityType` unions, color and radius lookups.
   - **`features/`**: Accident classification logic.
     - `accident-classification.ts` — determines accident type, severity, and marker style from properties.
@@ -105,6 +107,8 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
     - `map.ts` — Leaflet map creation with Canvas renderer, tile layer setup.
     - `geopackage-loader.ts` — fetches and opens GeoPackage files.
     - `geopackage-layer.ts` — iterates GeoPackage features and creates markers.
+    - `ppka-loader.ts` — parses the unified PPKA CSV, skipping the pre-2024 rows the GeoPackage already covers.
+    - `local-accident-layer.ts` — loads the GeoPackage and the PPKA CSV into one registration batch for the local data source.
     - `unfallatlas-loader.ts` — parses yearly Unfallatlas CSV files and maps rows to existing accident/severity categories.
     - `unfallatlas-layer.ts` — lazy-loads and toggles the Unfallatlas marker layer.
     - `data-source-store.ts` — toggles between local and Unfallatlas data sources.
@@ -114,9 +118,10 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
     - `popup-renderer.tsx` — renders React popup content for marker clicks.
   - **`ui/`**: React controls, panels, and popup components used inside Leaflet controls/popups.
 - **`index.html`**: Vite HTML entry point.
-- **`vite.config.mjs`**: Vite config for bundling/dev server, local data assets, Node-module shims for the GeoPackage browser bundle, and `unfallatlas/manifest.json` generation.
+- **`vite.config.mjs`**: Vite config for bundling/dev server, local data assets (`data/ppka`, `data/unfallatlas`), Node-module shims for the GeoPackage browser bundle, and `unfallatlas/manifest.json` generation.
 - **`scripts/extract-unfallatlas-bundesland.mjs`**: Streams raw Unfallatlas CSVs and writes filtered files for a selected `ULAND` code.
-- **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Geospatial accident data (must be in root).
+- **`unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg`**: Geospatial accident data 2018-2023 (must be in root).
+- **`data/ppka/verkehrsunfaelle_einheitlich_ka_fuss_rad.csv`**: Unified PPKA response covering 2018-2025. Its 2018-2023 rows restate the GeoPackage records (linked via `Original_Unfall_ID`, without coordinates) and are skipped at load time; only the geocoded newer years become markers.
 
 ## Key Technologies Used
 
@@ -129,8 +134,8 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
 ## How the Application Works
 
 1. **Map initialization** — Leaflet map with `preferCanvas: true` for Canvas rendering. Configured in `constants.ts`.
-2. **Data loading** — Local GeoPackage data is fetched and iterated with `for...of`. Unfallatlas years are discovered from generated `unfallatlas/manifest.json`; selected years are loaded lazily from local CSV files.
-3. **Normalization** — Unfallatlas rows are transformed into existing `AccidentType` and `SeverityType` categories so both sources use one styling/filter model.
+2. **Data loading** — The local source loads two files in one batch: the GeoPackage (iterated with `for...of`) and the PPKA CSV. Unfallatlas years are discovered from generated `unfallatlas/manifest.json`; selected years are loaded lazily from local CSV files.
+3. **Normalization** — PPKA CSV and Unfallatlas rows are transformed into existing `AccidentType` and `SeverityType` categories so all sources use one styling/filter model. The PPKA response reports casualties per accident rather than per mode of travel, so its severity comes from the accident totals; fatal accidents share the `LOCAL_SEVERE_INJURY` bucket and report their actual `Unfallkategorie` in the popup.
 4. **Marker creation** — Every normalized record becomes an `L.circleMarker` styled by accident type (color) and severity (radius), then registered in the filter system.
 5. **Filter control** — Custom collapsible panel in bottom-left. Users can switch data source, choose available Unfallatlas years, and toggle accident/severity filters independently.
 

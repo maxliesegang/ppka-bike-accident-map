@@ -33,6 +33,16 @@ export const UNFALLATLAS_KARLSRUHE_REGION = {
   ukreise: [12, 15],
 } as const;
 
+// PPKA CSV configuration
+// A later FragDenStaat response from the Polizeipraesidium Karlsruhe, delivered
+// as one unified CSV covering 2018-2025. Only its newer records carry
+// coordinates; the 2018-2023 rows reference the GeoPackage records through
+// `Original_Unfall_ID` and are skipped by the loader to avoid duplicates.
+export const PPKA_CSV_PATH =
+  'ppka/verkehrsunfaelle_einheitlich_ka_fuss_rad.csv';
+export const PPKA_SOURCE_NAME =
+  'Polizeipraesidium Karlsruhe (FragDenStaat-Anfrage)';
+
 // GeoPackage configuration
 export const GEOPACKAGE_FILE_NAME =
   'unfaelle_mit_fuss_oder_rad_2018_2023_ka.gpkg';

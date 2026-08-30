@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
-import { AccidentType, SeverityType } from '../data/accident-styles';
+import type { AccidentType, SeverityType } from '../data/accident-styles';
 import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
 import {
   AccidentMarkerSourceState,
@@ -11,6 +11,7 @@ import {
   areYearsEqual,
   toggleYear,
   type YearFilterController,
+  type YearFilterStatus,
 } from './year-filter';
 
 const accidentMarkerStateBySource: Record<
@@ -165,6 +166,15 @@ export function detachAccidentMarkersForSource(
   accidentMarkerStateBySource[dataSourceId].detachFromMap(map);
 }
 
+/** Keeps the local year UI state independent from whether the dataset is empty. */
+export function setLocalYearFilterStatus(status: YearFilterStatus): void {
+  if (status === localYearFilterStatus) {
+    return;
+  }
+  localYearFilterStatus = status;
+  notifyYearFilterChanged();
+}
+
 function setDimensionSelected<T>(
   dimension: MarkerFilterDimension<T>,
   key: T,
@@ -201,6 +211,7 @@ function notifyAccidentMarkerDataChanged(): void {
 
 const LOCAL_SOURCE_ID: DataSourceId = 'local';
 const yearFilterListeners = new Set<() => void>();
+let localYearFilterStatus: YearFilterStatus = 'loading';
 // Cached snapshots so `useSyncExternalStore` sees stable identities between
 // changes. Recomputed only when the marker set or year selection moves.
 let localAvailableYears: readonly number[] = [];
@@ -226,9 +237,7 @@ export const localYearFilterController: YearFilterController = {
       yearFilterListeners.delete(listener);
     };
   },
-  // Local years derive from the loaded GeoPackage, so "no years yet" simply
-  // means the data is still loading; this source never fails on its own.
-  getStatus: () => (localAvailableYears.length > 0 ? 'ready' : 'loading'),
+  getStatus: () => localYearFilterStatus,
   getAvailableYears: () => localAvailableYears,
   getSelectedYears: () => localSelectedYears,
   setSelectedYears: setLocalSelectedYears,
@@ -236,7 +245,7 @@ export const localYearFilterController: YearFilterController = {
   messages: {
     loading: 'Jahre werden geladen …',
     empty: 'Keine Jahre verfügbar.',
-    error: '',
+    error: 'Lokale Unfalldaten konnten nicht geladen werden.',
   },
 };
 
@@ -263,14 +272,19 @@ function recomputeLocalYearCaches(): void {
   const filter = accidentMarkerStateBySource[LOCAL_SOURCE_ID].getYearFilter();
   const selected =
     filter === null ? available : available.filter((year) => filter.has(year));
+  const availableChanged = !areYearsEqual(available, localAvailableYears);
+  const selectedChanged = !areYearsEqual(selected, localSelectedYears);
 
-  if (!areYearsEqual(available, localAvailableYears)) {
+  if (availableChanged) {
     localAvailableYears = available;
   }
-  if (!areYearsEqual(selected, localSelectedYears)) {
+  if (selectedChanged) {
     localSelectedYears = selected;
   }
-  notifyYearFilterChanged();
+
+  if (availableChanged || selectedChanged) {
+    notifyYearFilterChanged();
+  }
 }
 
 function notifyYearFilterChanged(): void {

@@ -1,15 +1,24 @@
 import {
+  UNFALLATLAS_FALLBACK_YEARS,
   UNFALLATLAS_CSV_PATH_TEMPLATES,
   UNFALLATLAS_MANIFEST_FILE,
-  UNFALLATLAS_FALLBACK_YEARS,
   UNFALLATLAS_SOURCE_NAME,
 } from '../constants';
-import { AccidentType, SeverityType } from '../data/accident-styles';
+import type { AccidentType, SeverityType } from '../data/accident-styles';
 import {
-  AccidentMarkerData,
+  type AccidentMarkerData,
   createAndRegisterAccidentMarker,
 } from './accident-marker-factory';
 import { type DataSourceId } from './data-source-types';
+import {
+  CSV_YIELD_INTERVAL,
+  createCsvHeaderIndex,
+  isEmptyCsvRow,
+  iterateCsvResponseRows,
+  parseCsvCoordinate,
+  parseCsvInteger,
+  yieldToEventLoop,
+} from '../data/csv';
 
 const REQUIRED_COLUMNS = [
   'UJAHR',
@@ -25,8 +34,6 @@ const REQUIRED_COLUMNS = [
 ] as const;
 
 const IST_SONSTIGE_COLUMN_CANDIDATES = ['IstSonstige', 'IstSonstig'] as const;
-const REGISTRATION_YIELD_INTERVAL = 5000;
-
 interface ColumnIndexMap {
   UJAHR: number;
   UMONAT: number;
@@ -79,7 +86,7 @@ type YearCsvLoadResult =
   | {
       status: 'loaded';
       year: number;
-      csvText: string;
+      response: Response;
     }
   | {
       status: 'failed';
@@ -231,7 +238,7 @@ export async function loadUnfallatlasMarkersForYears(
 
     try {
       markerCount += await parseAndRegisterRows(
-        result.csvText,
+        result.response,
         result.year,
         regionFilter,
         markerSourceId,
@@ -259,7 +266,7 @@ async function loadYearCsvSafely(year: number): Promise<YearCsvLoadResult> {
     return {
       status: 'loaded',
       year,
-      csvText: await loadYearCsvText(year),
+      response: await loadYearCsvResponse(year),
     };
   } catch (error: unknown) {
     return {
@@ -280,7 +287,7 @@ function warnYearFailure(
   );
 }
 
-async function loadYearCsvText(year: number): Promise<string> {
+async function loadYearCsvResponse(year: number): Promise<Response> {
   const manifest = await loadManifest();
   const candidatePaths =
     manifest.pathsByYear[year] && manifest.pathsByYear[year].length > 0
@@ -293,7 +300,7 @@ async function loadYearCsvText(year: number): Promise<string> {
       continue;
     }
 
-    return response.text();
+    return response;
   }
 
   throw new Error(`No CSV found for ${year} in configured templates.`);
@@ -307,63 +314,61 @@ function buildCsvPaths(year: number): readonly string[] {
 }
 
 async function parseAndRegisterRows(
-  csvText: string,
+  response: Response,
   fallbackYear: number,
   regionFilter: UnfallatlasRegionFilter | undefined,
   markerSourceId: DataSourceId,
 ): Promise<number> {
-  const rows = iterateCsvRows(csvText);
-  const firstRow = rows.next();
-  if (firstRow.done) {
-    return 0;
-  }
-
-  const headerValues = firstRow.value.map(cleanCsvValue);
-  const columnIndex = createColumnIndex(
-    headerValues,
-    regionFilter !== undefined,
-  );
-
-  let markerCount = 0;
-  let parsedRowCount = 0;
-
-  for (const values of rows) {
-    if (isEmptyCsvRow(values)) {
-      continue;
+  const rows = iterateCsvResponseRows(response);
+  try {
+    const firstRow = await rows.next();
+    if (firstRow.done) {
+      return 0;
     }
-    parsedRowCount += 1;
 
-    const accidentMarkerData = mapToMarkerData(
-      values,
-      columnIndex,
-      fallbackYear,
-      regionFilter,
+    const columnIndex = createColumnIndex(
+      firstRow.value,
+      regionFilter !== undefined,
     );
-    if (!accidentMarkerData) {
-      continue;
+
+    let markerCount = 0;
+    let parsedRowCount = 0;
+
+    for await (const values of rows) {
+      if (isEmptyCsvRow(values)) {
+        continue;
+      }
+      parsedRowCount += 1;
+
+      if (parsedRowCount % CSV_YIELD_INTERVAL === 0) {
+        await yieldToEventLoop();
+      }
+
+      const accidentMarkerData = mapToMarkerData(
+        values,
+        columnIndex,
+        fallbackYear,
+        regionFilter,
+      );
+      if (!accidentMarkerData) {
+        continue;
+      }
+
+      createAndRegisterAccidentMarker(accidentMarkerData, markerSourceId);
+      markerCount += 1;
     }
 
-    createAndRegisterAccidentMarker(accidentMarkerData, markerSourceId);
-    markerCount += 1;
-
-    if (parsedRowCount % REGISTRATION_YIELD_INTERVAL === 0) {
-      await yieldToEventLoop();
-    }
+    return markerCount;
+  } finally {
+    await rows.return(undefined);
   }
-
-  return markerCount;
 }
 
 function createColumnIndex(
-  headers: string[],
+  headers: readonly string[],
   includeRegionColumns: boolean,
 ): ColumnIndexMap {
-  const indexByHeader = new Map<string, number>();
-
-  for (let index = 0; index < headers.length; index += 1) {
-    const header = headers[index];
-    indexByHeader.set(header, index);
-  }
+  const indexByHeader = createCsvHeaderIndex(headers);
 
   const requiredColumns = includeRegionColumns
     ? [...REQUIRED_COLUMNS, 'UREGBEZ', 'UKREIS']
@@ -410,7 +415,7 @@ function createColumnIndex(
 }
 
 function mapToMarkerData(
-  values: string[],
+  values: readonly string[],
   columnIndex: ColumnIndexMap,
   fallbackYear: number,
   regionFilter?: UnfallatlasRegionFilter,
@@ -419,8 +424,8 @@ function mapToMarkerData(
     return null;
   }
 
-  const longitude = parseCoordinate(values[columnIndex.XGCSWGS84]);
-  const latitude = parseCoordinate(values[columnIndex.YGCSWGS84]);
+  const longitude = parseCsvCoordinate(values[columnIndex.XGCSWGS84]);
+  const latitude = parseCsvCoordinate(values[columnIndex.YGCSWGS84]);
   if (latitude === null || longitude === null) {
     return null;
   }
@@ -430,15 +435,15 @@ function mapToMarkerData(
     return null;
   }
 
-  const severityCode = parseInteger(values[columnIndex.UKATEGORIE]);
+  const severityCode = parseCsvInteger(values[columnIndex.UKATEGORIE]);
   const severityType = mapSeverityType(severityCode);
   if (!severityType) {
     return null;
   }
 
-  const year = parseInteger(values[columnIndex.UJAHR]) ?? fallbackYear;
-  const month = parseInteger(values[columnIndex.UMONAT]);
-  const hour = parseInteger(values[columnIndex.USTUNDE]);
+  const year = parseCsvInteger(values[columnIndex.UJAHR]) ?? fallbackYear;
+  const month = parseCsvInteger(values[columnIndex.UMONAT]);
+  const hour = parseCsvInteger(values[columnIndex.USTUNDE]);
 
   return {
     latitude,
@@ -458,7 +463,7 @@ function mapToMarkerData(
 }
 
 function extractFlags(
-  values: string[],
+  values: readonly string[],
   columnIndex: ColumnIndexMap,
 ): UnfallatlasFlags {
   const hasBike = parseFlag(values[columnIndex.IstRad]);
@@ -529,100 +534,13 @@ function describeParticipants({
   return participants.length > 0 ? participants.join(', ') : 'Unbekannt';
 }
 
-function cleanCsvValue(value: string): string {
-  return value.replace(/^\uFEFF/, '').trim();
-}
-
-function* iterateCsvRows(csvText: string): Generator<string[]> {
-  const row: string[] = [];
-  let currentValue = '';
-  let insideQuotes = false;
-
-  const finalizeValue = (): void => {
-    row.push(currentValue);
-    currentValue = '';
-  };
-
-  const finalizeRow = (): string[] | null => {
-    finalizeValue();
-    if (row.length === 1 && row[0] === '') {
-      row.length = 0;
-      return null;
-    }
-
-    const finalizedRow = [...row];
-    row.length = 0;
-    return finalizedRow;
-  };
-
-  for (let index = 0; index < csvText.length; index += 1) {
-    const character = csvText[index];
-
-    if (character === '"') {
-      const nextCharacter = csvText[index + 1];
-      if (insideQuotes && nextCharacter === '"') {
-        currentValue += '"';
-        index += 1;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-      continue;
-    }
-
-    if (!insideQuotes && character === ';') {
-      finalizeValue();
-      continue;
-    }
-
-    if (!insideQuotes && (character === '\n' || character === '\r')) {
-      const finalizedRow = finalizeRow();
-      if (finalizedRow) {
-        yield finalizedRow;
-      }
-
-      if (character === '\r' && csvText[index + 1] === '\n') {
-        index += 1;
-      }
-      continue;
-    }
-
-    currentValue += character;
-  }
-
-  if (currentValue.length > 0 || row.length > 0) {
-    const finalizedRow = finalizeRow();
-    if (finalizedRow) {
-      yield finalizedRow;
-    }
-  }
-}
-
-function isEmptyCsvRow(values: readonly string[]): boolean {
-  for (const value of values) {
-    if (value.trim().length > 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function parseInteger(value: string | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function parseFlag(value: string | undefined): boolean {
-  const parsed = parseInteger(value);
+  const parsed = parseCsvInteger(value);
   return parsed !== null && parsed > 0;
 }
 
 function isRowInRegion(
-  values: string[],
+  values: readonly string[],
   columnIndex: ColumnIndexMap,
   regionFilter: UnfallatlasRegionFilter,
 ): boolean {
@@ -630,8 +548,8 @@ function isRowInRegion(
     return false;
   }
 
-  const uregbez = parseInteger(values[columnIndex.UREGBEZ]);
-  const ukreis = parseInteger(values[columnIndex.UKREIS]);
+  const uregbez = parseCsvInteger(values[columnIndex.UREGBEZ]);
+  const ukreis = parseCsvInteger(values[columnIndex.UKREIS]);
   return (
     uregbez === regionFilter.uregbez &&
     ukreis !== null &&
@@ -639,18 +557,8 @@ function isRowInRegion(
   );
 }
 
-function parseCoordinate(value: string | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = value.replace(',', '.');
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function getRequiredColumnIndex(
-  indexByHeader: Map<string, number>,
+  indexByHeader: ReadonlyMap<string, number>,
   columnName: string,
 ): number {
   const index = indexByHeader.get(columnName);
@@ -661,14 +569,14 @@ function getRequiredColumnIndex(
 }
 
 function getOptionalColumnIndex(
-  indexByHeader: Map<string, number>,
+  indexByHeader: ReadonlyMap<string, number>,
   columnName: string,
 ): number | undefined {
   return indexByHeader.get(columnName);
 }
 
 function getFirstExistingColumnIndex(
-  indexByHeader: Map<string, number>,
+  indexByHeader: ReadonlyMap<string, number>,
   columnNames: readonly string[],
 ): number | undefined {
   for (const columnName of columnNames) {
@@ -681,17 +589,11 @@ function getFirstExistingColumnIndex(
 }
 
 function parseOptionalFlag(
-  values: string[],
+  values: readonly string[],
   columnIndex: number | undefined,
 ): boolean {
   if (columnIndex === undefined) {
     return false;
   }
   return parseFlag(values[columnIndex]);
-}
-
-function yieldToEventLoop(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
 }

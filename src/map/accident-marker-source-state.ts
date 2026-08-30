@@ -40,6 +40,8 @@ export class AccidentMarkerSourceState {
     number,
     AccidentMarkerEntry[]
   >();
+  private availableYearsSnapshot: readonly number[] = [];
+  private availableYearsDirty = false;
   // Selected years for this source, or `null` when no year filter is active
   // (every year visible). Applied client-side on top of the type/severity
   // predicate, so any source gains year filtering without a bespoke pipeline.
@@ -53,20 +55,22 @@ export class AccidentMarkerSourceState {
     this.markerEntriesByAccidentType.clear();
     this.markerEntriesBySeverityType.clear();
     this.markerEntriesByYear.clear();
+    this.availableYearsSnapshot = [];
+    this.availableYearsDirty = false;
     this.isRegisteringBatch = false;
     this.needsVisibilityRefresh = false;
     this.visibleMarkersLayer.clearLayers();
   }
 
   /** Distinct accident years present in this source, ascending. */
-  getAvailableYears(): number[] {
-    const years = new Set<number>();
-    for (const { year } of this.markerEntries) {
-      if (year !== null) {
-        years.add(year);
-      }
+  getAvailableYears(): readonly number[] {
+    if (this.availableYearsDirty) {
+      this.availableYearsSnapshot = [...this.markerEntriesByYear.keys()].sort(
+        (left, right) => left - right,
+      );
+      this.availableYearsDirty = false;
     }
-    return [...years].sort((a, b) => a - b);
+    return this.availableYearsSnapshot;
   }
 
   getYearFilter(): ReadonlySet<number> | null {
@@ -118,6 +122,9 @@ export class AccidentMarkerSourceState {
     addToIndex(this.markerEntriesByAccidentType, accidentType, markerEntry);
     addToIndex(this.markerEntriesBySeverityType, severityType, markerEntry);
     if (year !== null) {
+      if (!this.markerEntriesByYear.has(year)) {
+        this.availableYearsDirty = true;
+      }
       addToIndex(this.markerEntriesByYear, year, markerEntry);
     }
 

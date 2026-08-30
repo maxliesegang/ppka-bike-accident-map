@@ -1,12 +1,12 @@
 import { addTileLayer, createMap } from './map/map';
-import { loadGeoPackageMarkers } from './map/geopackage-layer';
+import { loadLocalAccidentMarkers } from './map/local-accident-layer';
 import { addPanelControls } from './map/panel-controls';
 import './styles.css';
 
 function main(): void {
   const map = createMap();
   addTileLayer(map);
-  loadGeoPackageMarkers(map);
+  loadLocalAccidentMarkers(map);
   addPanelControls(map);
 }
 

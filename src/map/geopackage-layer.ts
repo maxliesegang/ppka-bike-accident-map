@@ -1,55 +1,46 @@
 import { GeoPackage } from '@ngageoint/geopackage';
-import * as L from 'leaflet';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
 import { fetchAndOpenGeoPackage } from './geopackage-loader';
 import { createAndRegisterGeoPackageAccidentMarker } from './accident-marker-factory';
-import {
-  beginAccidentMarkerBatch,
-  clearAccidentMarkersForSource,
-  endAccidentMarkerBatch,
-  attachLocalAccidentMarkers,
-} from './accident-marker-store';
+import { type DataSourceId } from './data-source-types';
 
-export async function loadGeoPackageMarkers(map: L.Map): Promise<void> {
-  try {
-    attachLocalAccidentMarkers(map);
-    clearAccidentMarkersForSource('local');
-
-    const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
-    const { addedCount, skippedCount } = registerGeoPackageMarkers(geoPackage);
-    if (skippedCount > 0) {
-      console.warn(
-        `Skipped ${skippedCount} GeoPackage features without valid point geometry.`,
-      );
-    }
-    console.info(`Loaded ${addedCount} GeoPackage markers.`);
-  } catch (error: unknown) {
-    console.error('Error loading GeoPackage file:', error);
-  }
+export interface GeoPackageLoadResult {
+  markerCount: number;
+  skippedCount: number;
 }
 
-function registerGeoPackageMarkers(geoPackage: GeoPackage): {
-  addedCount: number;
-  skippedCount: number;
-} {
-  let addedCount = 0;
+/**
+ * Registers the GeoPackage accidents (2018-2023) with the given source. The
+ * caller owns the registration batch, because the local source is fed by this
+ * file and the PPKA CSV together — see `local-accident-layer.ts`.
+ */
+export async function loadGeoPackageMarkers(
+  markerSourceId: DataSourceId,
+): Promise<GeoPackageLoadResult> {
+  const geoPackage = await fetchAndOpenGeoPackage(GEOPACKAGE_FILE_NAME);
+  return registerGeoPackageMarkers(geoPackage, markerSourceId);
+}
+
+function registerGeoPackageMarkers(
+  geoPackage: GeoPackage,
+  markerSourceId: DataSourceId,
+): GeoPackageLoadResult {
+  let markerCount = 0;
   let skippedCount = 0;
 
-  beginAccidentMarkerBatch('local');
-  try {
-    for (const feature of geoPackage.iterateGeoJSONFeatures(
-      GEOPACKAGE_LAYER_NAME,
-    )) {
-      if (createAndRegisterGeoPackageAccidentMarker(feature) === null) {
-        skippedCount += 1;
-        continue;
-      }
-
-      addedCount += 1;
+  for (const feature of geoPackage.iterateGeoJSONFeatures(
+    GEOPACKAGE_LAYER_NAME,
+  )) {
+    if (
+      createAndRegisterGeoPackageAccidentMarker(feature, markerSourceId) ===
+      null
+    ) {
+      skippedCount += 1;
+      continue;
     }
-  } finally {
-    endAccidentMarkerBatch('local');
+
+    markerCount += 1;
   }
 
-  return { addedCount, skippedCount };
+  return { markerCount, skippedCount };
 }

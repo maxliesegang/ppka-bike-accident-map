@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
-import { AccidentProperties } from '../data/accident-properties';
-import { AccidentType, SeverityType } from '../data/accident-styles';
+import type { AccidentProperties } from '../data/accident-properties';
+import type { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   getAccidentType,
   getSeverityType,
