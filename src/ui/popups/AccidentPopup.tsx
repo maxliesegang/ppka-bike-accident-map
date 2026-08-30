@@ -17,7 +17,7 @@ interface AccidentPopupProps {
 
 /**
  * Content for a marker popup, rendered with Kern UX components. Rendered to a
- * static HTML string by `renderAccidentPopup` and handed to Leaflet's popup.
+ * static HTML string by `renderAccidentPopup` and handed to the map's popup.
  * The top section is optimized for scanning; the complete labelled field list
  * remains available below it for verification and power use.
  */

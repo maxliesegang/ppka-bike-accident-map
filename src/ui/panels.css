@@ -6,12 +6,12 @@
  * design tokens so the panels stay visually consistent with the kit.
  */
 
-/* Size the Leaflet control box to its content with a viewport cap, so it stays
+/* Size the MapLibre control box to its content with a viewport cap, so it stays
  * anchored to its corner whether it holds the wide panel or the compact toggle.
- * Without the width rule, Leaflet's nested auto-widths collapse the box to the
- * longest word and the Kern button (min-width: fit-content) overflows the
- * viewport. The margin overrides Leaflet's default 10px so the card floats with
- * a consistent gap from the map edges on every side. */
+ * Without the width rule, the nested auto-widths collapse the box to the longest
+ * word and the Kern button (min-width: fit-content) overflows the viewport. The
+ * margin overrides MapLibre's default 10px so the card floats with a consistent
+ * gap from the map edges on every side. */
 .cp-control {
   width: max-content;
   max-width: calc(100vw - 28px);

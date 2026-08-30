@@ -1,5 +1,5 @@
 import { KernText } from '@kern-ux-annex/kern-react-kit';
-import type * as L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { useSyncExternalStore } from 'react';
 import { getAccidentColor } from '../../data/accident-styles';
 import { focusHotspot } from '../../features/hotspots/hotspot-focus';
@@ -28,7 +28,7 @@ import { PanelFrame } from './PanelFrame';
  * selecting a row flies the map there and opens the spot's detail popup. Ranking
  * is by raw count — labelled as a lower bound and not exposure-adjusted.
  */
-export function HotspotPanel({ map }: { map: L.Map }) {
+export function HotspotPanel({ map }: { map: MapLibreMap }) {
   const hotspots = useSyncExternalStore(subscribeToHotspots, getRankedHotspots);
   const dataSourceId = useSyncExternalStore(
     subscribeToDataSourceId,

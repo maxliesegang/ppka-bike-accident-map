@@ -4,7 +4,6 @@ import type {
   AccidentProperties,
 } from '../data/accident-properties';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
-import { getAccidentColor, getSeverityRadius } from '../data/accident-styles';
 
 type AccidentClassifier = {
   type: AccidentType;
@@ -55,19 +54,6 @@ const SEVERITY_TYPE_CLASSIFIERS: readonly SeverityClassifier[] = [
   },
 ];
 
-const BASE_CIRCLE_MARKER_STYLE: Pick<
-  L.CircleMarkerOptions,
-  'color' | 'stroke' | 'weight' | 'opacity' | 'fillOpacity'
-> = {
-  color: '#000000',
-  stroke: true,
-  weight: 1,
-  opacity: 1,
-  fillOpacity: 0.9,
-};
-
-const STYLE_CACHE = new Map<string, L.CircleMarkerOptions>();
-
 export function getAccidentType(p: AccidentParticipantCounts): AccidentType {
   for (const { type, matches } of ACCIDENT_TYPE_CLASSIFIERS) {
     if (matches(p)) {
@@ -106,23 +92,4 @@ export function getLocalSeverityTypeFromCasualties({
     return 'LOCAL_INJURY';
   }
   return 'LOCAL_NO_INJURY';
-}
-
-export function getMarkerStyle(
-  accidentType: AccidentType,
-  severityType: SeverityType,
-): L.CircleMarkerOptions {
-  const styleKey = `${accidentType}:${severityType}`;
-  const cachedStyle = STYLE_CACHE.get(styleKey);
-  if (cachedStyle) {
-    return cachedStyle;
-  }
-
-  const style: L.CircleMarkerOptions = {
-    ...BASE_CIRCLE_MARKER_STYLE,
-    radius: getSeverityRadius(severityType),
-    fillColor: getAccidentColor(accidentType),
-  };
-  STYLE_CACHE.set(styleKey, style);
-  return style;
 }

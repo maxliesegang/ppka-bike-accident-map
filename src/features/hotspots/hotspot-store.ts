@@ -54,7 +54,7 @@ function computeRankedHotspots(): readonly Hotspot[] {
       continue;
     }
 
-    const { lat, lng } = entry.marker.getLatLng();
+    const [lng, lat] = entry.coordinates;
     records.push({
       lat,
       lng,

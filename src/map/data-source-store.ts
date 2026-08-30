@@ -1,3 +1,4 @@
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import {
   attachAccidentMarkersForSource,
   detachAccidentMarkersForSource,
@@ -12,7 +13,7 @@ let selectedDataSourceId: DataSourceId = 'local';
 const dataSourceListeners = new Set<(dataSourceId: DataSourceId) => void>();
 const dataSourceVisibilityActions: Record<
   DataSourceId,
-  { show: (map: L.Map) => void; hide: (map: L.Map) => void }
+  { show: (map: MapLibreMap) => void; hide: (map: MapLibreMap) => void }
 > = {
   local: {
     show: (map) => attachAccidentMarkersForSource(map, 'local'),
@@ -34,7 +35,7 @@ export function getSelectedDataSourceId(): DataSourceId {
 
 export function setSelectedDataSourceId(
   dataSourceId: DataSourceId,
-  map: L.Map,
+  map: MapLibreMap,
 ): void {
   if (dataSourceId === selectedDataSourceId) {
     return;

@@ -1,4 +1,8 @@
-import * as L from 'leaflet';
+import type {
+  ControlPosition,
+  IControl,
+  Map as MapLibreMap,
+} from 'maplibre-gl';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { KernRoot } from '../KernRoot';
@@ -8,54 +12,68 @@ import { LegendPanel } from '../panels/LegendPanel';
 import '../panels.css';
 
 /**
- * A Leaflet control that hosts a React tree. Keeps corner placement and
- * click/scroll isolation from Leaflet while the panel content is plain React +
+ * A MapLibre control that hosts a React tree. Keeps corner placement and
+ * click/scroll isolation from the map while the panel content is plain React +
  * Kern UX. React owns everything inside the returned container.
  */
-class MapPanelControl extends L.Control {
+class MapPanelControl implements IControl {
   private root: Root | null = null;
+  private container: HTMLElement | null = null;
 
   constructor(
-    private readonly renderPanel: (map: L.Map) => ReactNode,
-    options?: L.ControlOptions,
-  ) {
-    super(options);
-  }
+    private readonly renderPanel: (map: MapLibreMap) => ReactNode,
+    private readonly position: ControlPosition,
+  ) {}
 
-  override onAdd(map: L.Map): HTMLElement {
-    const container = L.DomUtil.create('div', 'leaflet-control cp-control');
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.disableScrollPropagation(container);
+  onAdd(map: MapLibreMap): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'maplibregl-ctrl cp-control';
+    // MapLibre binds its gesture handlers to the map container, an ancestor of
+    // every control — stopping propagation here keeps panel clicks, scrolling,
+    // and double-clicks from panning, zooming, or rotating the map.
+    for (const eventType of [
+      'mousedown',
+      'touchstart',
+      'wheel',
+      'dblclick',
+      'contextmenu',
+    ]) {
+      container.addEventListener(eventType, (event) => event.stopPropagation());
+    }
 
+    this.container = container;
     this.root = createRoot(container);
     this.root.render(<KernRoot>{this.renderPanel(map)}</KernRoot>);
     return container;
   }
 
-  override onRemove(): void {
+  onRemove(): void {
     const root = this.root;
     this.root = null;
+    this.container?.remove();
+    this.container = null;
     // Defer so we never unmount synchronously during a React render pass.
     if (root) {
       queueMicrotask(() => root.unmount());
     }
   }
+
+  getDefaultPosition(): ControlPosition {
+    return this.position;
+  }
 }
 
-export function createFilterControl(): L.Control {
-  return new MapPanelControl((map) => <FilterPanel map={map} />, {
-    position: 'topright',
-  });
+export function createFilterControl(): IControl {
+  return new MapPanelControl((map) => <FilterPanel map={map} />, 'top-right');
 }
 
-export function createLegendControl(): L.Control {
-  return new MapPanelControl(() => <LegendPanel />, {
-    position: 'bottomleft',
-  });
+export function createLegendControl(): IControl {
+  return new MapPanelControl(() => <LegendPanel />, 'bottom-left');
 }
 
-export function createHotspotControl(): L.Control {
-  return new MapPanelControl((map) => <HotspotPanel map={map} />, {
-    position: 'bottomright',
-  });
+export function createHotspotControl(): IControl {
+  return new MapPanelControl(
+    (map) => <HotspotPanel map={map} />,
+    'bottom-right',
+  );
 }

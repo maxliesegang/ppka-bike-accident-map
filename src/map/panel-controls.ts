@@ -1,12 +1,12 @@
-import type * as L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import {
   createFilterControl,
   createHotspotControl,
   createLegendControl,
 } from '../ui/controls/map-panel-control';
 
-export function addPanelControls(map: L.Map): void {
-  createFilterControl().addTo(map);
-  createLegendControl().addTo(map);
-  createHotspotControl().addTo(map);
+export function addPanelControls(map: MapLibreMap): void {
+  map.addControl(createFilterControl(), 'top-right');
+  map.addControl(createLegendControl(), 'bottom-left');
+  map.addControl(createHotspotControl(), 'bottom-right');
 }

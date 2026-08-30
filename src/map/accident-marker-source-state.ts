@@ -1,23 +1,113 @@
-import * as L from 'leaflet';
+import {
+  type CircleLayerSpecification,
+  type ExpressionSpecification,
+  GeoJSONSource,
+  type Map as MapLibreMap,
+} from 'maplibre-gl';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
+import { renderAccidentPopup } from './accident-popup-renderer';
+import type { DataSourceId } from './data-source-types';
+import { openAccidentPopup } from './map-popup';
 
-export interface AccidentMarkerEntry {
-  marker: L.CircleMarker;
-  accidentType: AccidentType;
-  severityType: SeverityType;
-  /** Accident year, or `null` when the source carries no usable date. */
-  year: number | null;
+/**
+ * What a popup renders from: either a plain property bag, or a factory that is
+ * only invoked when the user opens the popup (so the per-row detail objects are
+ * not built for every loaded accident).
+ */
+export type AccidentPopupPropertySource =
+  | Record<string, unknown>
+  | (() => Record<string, unknown>);
+
+export function resolvePopupProperties(
+  popupProperties: AccidentPopupPropertySource,
+): Record<string, unknown> {
+  return typeof popupProperties === 'function'
+    ? popupProperties()
+    : popupProperties;
 }
 
-export type AccidentMarkerFilterPredicate = (
-  accidentType: AccidentType,
-  severityType: SeverityType,
-) => boolean;
+export interface AccidentMarkerEntry {
+  readonly feature: GeoJSON.Feature<GeoJSON.Point>;
+  /** `[longitude, latitude]`, kept alongside the feature for analytics reuse. */
+  readonly coordinates: readonly [number, number];
+  readonly accidentType: AccidentType;
+  readonly severityType: SeverityType;
+  /** Accident year, or `null` when the source carries no usable date. */
+  readonly year: number | null;
+  /** Key into this source's popup property registry (see `registerFeature`). */
+  readonly popupId: number;
+}
 
+/**
+ * The style of the shared accident circle layer. Color encodes the accident
+ * type and radius the severity, both read from the feature properties that the
+ * marker factory stamps on every point.
+ */
+const ACCIDENT_LAYER_SPECIFICATION: Omit<
+  CircleLayerSpecification,
+  'id' | 'source'
+> = {
+  type: 'circle',
+  paint: {
+    'circle-color': ['get', 'color'],
+    'circle-radius': ['get', 'radius'],
+    'circle-opacity': 0.9,
+    'circle-stroke-color': '#000000',
+    'circle-stroke-width': 1,
+    'circle-stroke-opacity': 1,
+  },
+};
+
+const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+  type: 'FeatureCollection',
+  features: [],
+};
+
+/**
+ * Whether the error is MapLibre rejecting a style mutation because a style
+ * update is still in flight ("Style is not done loading."). Such mutations are
+ * retried once the map settles instead of failing.
+ */
+function isStyleBusyError(error: unknown): error is Error {
+  return error instanceof Error && error.message.includes('not done loading');
+}
+
+/**
+ * Owns one data source's accidents as a MapLibre GeoJSON source. Instead of
+ * toggling individual markers, visibility is a filter expression over the
+ * feature properties (accident type, severity, year) that the shared circle
+ * layer applies — recomputed only when a filter moves, never per marker.
+ * Feature data is pushed in batches: registration marks the source dirty, and
+ * the batch end uploads the rebuilt `FeatureCollection` once.
+ */
 export class AccidentMarkerSourceState {
-  readonly visibleMarkersLayer = L.layerGroup();
+  private readonly sourceId: string;
+  private readonly layerId: string;
 
   private readonly markerEntries: AccidentMarkerEntry[] = [];
+  private readonly popupPropertiesById = new Map<
+    number,
+    AccidentPopupPropertySource
+  >();
+  private readonly availableYears = new Set<number>();
+  private availableYearsSnapshot: readonly number[] = [];
+  private availableYearsDirty = false;
+  // Selected years for this source, or `null` when no year filter is active
+  // (every year visible). Applied on top of the type/severity filter, so any
+  // source gains year filtering without a bespoke pipeline.
+  private yearFilter: ReadonlySet<number> | null = null;
+  // The type/severity clauses shared by every source, built by the marker
+  // store from the legend selections. Set on attach and on selection changes.
+  private baseFilter: ExpressionSpecification | null = null;
+  private map: MapLibreMap | null = null;
+  private isRegisteringBatch = false;
+  private isDataDirty = false;
+  private nextPopupId = 0;
+
+  constructor(dataSourceId: DataSourceId) {
+    this.sourceId = `accidents-${dataSourceId}`;
+    this.layerId = this.sourceId;
+  }
 
   /**
    * Every registered marker for this source, regardless of current filter
@@ -28,44 +118,22 @@ export class AccidentMarkerSourceState {
     return this.markerEntries;
   }
 
-  private readonly markerEntriesByAccidentType = new Map<
-    AccidentType,
-    AccidentMarkerEntry[]
-  >();
-  private readonly markerEntriesBySeverityType = new Map<
-    SeverityType,
-    AccidentMarkerEntry[]
-  >();
-  private readonly markerEntriesByYear = new Map<
-    number,
-    AccidentMarkerEntry[]
-  >();
-  private availableYearsSnapshot: readonly number[] = [];
-  private availableYearsDirty = false;
-  // Selected years for this source, or `null` when no year filter is active
-  // (every year visible). Applied client-side on top of the type/severity
-  // predicate, so any source gains year filtering without a bespoke pipeline.
-  private yearFilter: ReadonlySet<number> | null = null;
-  private map: L.Map | null = null;
-  private isRegisteringBatch = false;
-  private needsVisibilityRefresh = false;
-
   clear(): void {
     this.markerEntries.length = 0;
-    this.markerEntriesByAccidentType.clear();
-    this.markerEntriesBySeverityType.clear();
-    this.markerEntriesByYear.clear();
+    this.popupPropertiesById.clear();
+    this.availableYears.clear();
     this.availableYearsSnapshot = [];
     this.availableYearsDirty = false;
     this.isRegisteringBatch = false;
-    this.needsVisibilityRefresh = false;
-    this.visibleMarkersLayer.clearLayers();
+    this.nextPopupId = 0;
+    this.isDataDirty = true;
+    this.syncData();
   }
 
   /** Distinct accident years present in this source, ascending. */
   getAvailableYears(): readonly number[] {
     if (this.availableYearsDirty) {
-      this.availableYearsSnapshot = [...this.markerEntriesByYear.keys()].sort(
+      this.availableYearsSnapshot = [...this.availableYears].sort(
         (left, right) => left - right,
       );
       this.availableYearsDirty = false;
@@ -77,164 +145,6 @@ export class AccidentMarkerSourceState {
     return this.yearFilter;
   }
 
-  /**
-   * Restricts visible markers to `years` (`null` clears the year filter). Only
-   * the year buckets whose membership actually flips are touched, so toggling a
-   * year never rebuilds the whole layer.
-   */
-  setYearFilter(
-    years: ReadonlySet<number> | null,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    const previous = this.yearFilter;
-    this.yearFilter = years;
-
-    for (const year of this.affectedYears(previous, years)) {
-      this.updateMarkerVisibility(
-        this.markerEntriesByYear.get(year) ?? [],
-        isMarkerSelected,
-      );
-    }
-  }
-
-  beginRegistrationBatch(): void {
-    this.isRegisteringBatch = true;
-  }
-
-  endRegistrationBatch(isMarkerSelected: AccidentMarkerFilterPredicate): void {
-    if (!this.isRegisteringBatch) {
-      return;
-    }
-
-    this.isRegisteringBatch = false;
-    this.refreshVisibleMarkers(isMarkerSelected);
-  }
-
-  registerMarker(
-    marker: L.CircleMarker,
-    accidentType: AccidentType,
-    severityType: SeverityType,
-    year: number | null,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    const markerEntry = { marker, accidentType, severityType, year };
-    this.markerEntries.push(markerEntry);
-    addToIndex(this.markerEntriesByAccidentType, accidentType, markerEntry);
-    addToIndex(this.markerEntriesBySeverityType, severityType, markerEntry);
-    if (year !== null) {
-      if (!this.markerEntriesByYear.has(year)) {
-        this.availableYearsDirty = true;
-      }
-      addToIndex(this.markerEntriesByYear, year, markerEntry);
-    }
-
-    if (
-      !this.isRegisteringBatch &&
-      this.isEntryVisible(markerEntry, isMarkerSelected)
-    ) {
-      this.visibleMarkersLayer.addLayer(marker);
-    }
-  }
-
-  attachToMap(
-    map: L.Map,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    this.map = map;
-    if (this.needsVisibilityRefresh) {
-      this.refreshVisibleMarkers(isMarkerSelected);
-    }
-    if (!map.hasLayer(this.visibleMarkersLayer)) {
-      this.visibleMarkersLayer.addTo(map);
-    }
-  }
-
-  detachFromMap(map: L.Map): void {
-    if (map.hasLayer(this.visibleMarkersLayer)) {
-      map.removeLayer(this.visibleMarkersLayer);
-    }
-    if (this.map === map) {
-      this.map = null;
-    }
-  }
-
-  updateAccidentTypeVisibility(
-    accidentType: AccidentType,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    this.updateMarkerVisibility(
-      this.markerEntriesByAccidentType.get(accidentType) ?? [],
-      isMarkerSelected,
-    );
-  }
-
-  updateSeverityTypeVisibility(
-    severityType: SeverityType,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    this.updateMarkerVisibility(
-      this.markerEntriesBySeverityType.get(severityType) ?? [],
-      isMarkerSelected,
-    );
-  }
-
-  private refreshVisibleMarkers(
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    const wasLayerVisible = this.map?.hasLayer(this.visibleMarkersLayer);
-
-    if (this.map && wasLayerVisible) {
-      this.map.removeLayer(this.visibleMarkersLayer);
-    }
-
-    this.visibleMarkersLayer.clearLayers();
-
-    for (const entry of this.markerEntries) {
-      if (this.isEntryVisible(entry, isMarkerSelected)) {
-        this.visibleMarkersLayer.addLayer(entry.marker);
-      }
-    }
-
-    if (this.map && wasLayerVisible) {
-      this.visibleMarkersLayer.addTo(this.map);
-    }
-    this.needsVisibilityRefresh = false;
-  }
-
-  private updateMarkerVisibility(
-    markers: readonly AccidentMarkerEntry[],
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): void {
-    if (this.isRegisteringBatch) {
-      return;
-    }
-    if (this.map === null || !this.map.hasLayer(this.visibleMarkersLayer)) {
-      this.needsVisibilityRefresh = true;
-      return;
-    }
-
-    for (const entry of markers) {
-      const shouldBeVisible = this.isEntryVisible(entry, isMarkerSelected);
-      const isVisible = this.visibleMarkersLayer.hasLayer(entry.marker);
-
-      if (shouldBeVisible && !isVisible) {
-        this.visibleMarkersLayer.addLayer(entry.marker);
-      } else if (!shouldBeVisible && isVisible) {
-        this.visibleMarkersLayer.removeLayer(entry.marker);
-      }
-    }
-  }
-
-  private isEntryVisible(
-    entry: AccidentMarkerEntry,
-    isMarkerSelected: AccidentMarkerFilterPredicate,
-  ): boolean {
-    return (
-      isMarkerSelected(entry.accidentType, entry.severityType) &&
-      this.isYearVisible(entry.year)
-    );
-  }
-
   /** Whether this year passes the current year filter (undated stays visible). */
   isYearVisible(year: number | null): boolean {
     // Undated markers can't be excluded by a year filter, so they stay visible.
@@ -243,35 +153,234 @@ export class AccidentMarkerSourceState {
     );
   }
 
-  /** Years whose visibility can differ between the old and new year filters. */
-  private affectedYears(
-    previous: ReadonlySet<number> | null,
-    next: ReadonlySet<number> | null,
-  ): Iterable<number> {
-    if (previous === null || next === null) {
-      // Switching to or from "all years" can flip any dated marker.
-      return this.markerEntriesByYear.keys();
+  /**
+   * Registers one accident as a GeoJSON point. The feature carries the style
+   * (color/radius) and filter (type/severity/year) properties; `popupId` is
+   * stamped here so the click handler can resolve the popup property source
+   * back from a rendered feature.
+   */
+  registerFeature(
+    feature: GeoJSON.Feature<GeoJSON.Point>,
+    accidentType: AccidentType,
+    severityType: SeverityType,
+    year: number | null,
+    popupProperties: AccidentPopupPropertySource,
+  ): void {
+    const popupId = this.nextPopupId;
+    this.nextPopupId += 1;
+    feature.properties = { ...feature.properties, popupId };
+
+    const [longitude, latitude] = feature.geometry.coordinates;
+    this.markerEntries.push({
+      feature,
+      coordinates: [longitude, latitude],
+      accidentType,
+      severityType,
+      year,
+      popupId,
+    });
+    this.popupPropertiesById.set(popupId, popupProperties);
+    if (year !== null && !this.availableYears.has(year)) {
+      this.availableYears.add(year);
+      this.availableYearsDirty = true;
     }
-    const changed = new Set<number>();
-    for (const year of this.markerEntriesByYear.keys()) {
-      if (previous.has(year) !== next.has(year)) {
-        changed.add(year);
+
+    this.isDataDirty = true;
+    if (!this.isRegisteringBatch) {
+      this.syncData();
+    }
+  }
+
+  beginRegistrationBatch(): void {
+    this.isRegisteringBatch = true;
+  }
+
+  endRegistrationBatch(): void {
+    if (!this.isRegisteringBatch) {
+      return;
+    }
+    this.isRegisteringBatch = false;
+    this.syncData();
+  }
+
+  /**
+   * Shows this source's layer on the map, creating its GeoJSON source and
+   * circle layer (with the current filter baked in) the first time. Style
+   * mutations are unavailable until the map has loaded its style, and the
+   * initial attach runs synchronously after map creation — so first-time
+   * creation defers into the map's load event.
+   */
+  attachToMap(map: MapLibreMap, baseFilter: ExpressionSpecification): void {
+    this.map = map;
+    this.baseFilter = baseFilter;
+
+    if (map.isStyleLoaded()) {
+      this.applyToMap();
+    } else {
+      map.once('load', () => {
+        if (this.map === map) {
+          this.applyToMap();
+        }
+      });
+    }
+  }
+
+  detachFromMap(map: MapLibreMap): void {
+    this.setLayerVisibility(map, 'none');
+    if (this.map === map) {
+      this.map = null;
+    }
+  }
+
+  setBaseFilter(baseFilter: ExpressionSpecification): void {
+    this.baseFilter = baseFilter;
+    this.applyFilter();
+  }
+
+  /**
+   * Restricts visible markers to `years` (`null` clears the year filter). The
+   * filter expression is recomputed wholesale — cheap next to re-rendering.
+   */
+  setYearFilter(years: ReadonlySet<number> | null): void {
+    this.yearFilter = years;
+    this.applyFilter();
+  }
+
+  /**
+   * Creates the source and circle layer on the map (once) and pushes the
+   * current data. Called only once the map's style has loaded; creating the
+   * layer with the current filter baked in keeps the busy-style window after
+   * `addSource` free of further style mutations.
+   */
+  private applyToMap(): void {
+    const map = this.map;
+    if (map === null) {
+      return;
+    }
+
+    if (map.getSource(this.sourceId) === undefined) {
+      map.addSource(this.sourceId, {
+        type: 'geojson',
+        data: EMPTY_FEATURE_COLLECTION,
+      });
+      map.addLayer({
+        ...ACCIDENT_LAYER_SPECIFICATION,
+        id: this.layerId,
+        source: this.sourceId,
+        filter: this.buildFilterExpression(),
+      });
+      this.bindClickHandler(map);
+    } else {
+      // Re-attach: the layer starts hidden and becomes this source's active view.
+      this.setLayerVisibility(map, 'visible');
+    }
+
+    this.syncData();
+  }
+
+  private syncData(): void {
+    const map = this.map;
+    if (map === null || !this.isDataDirty) {
+      return;
+    }
+    const source = map.getSource(this.sourceId);
+    if (source instanceof GeoJSONSource) {
+      source.setData(this.buildFeatureCollection());
+      this.isDataDirty = false;
+    }
+  }
+
+  private buildFeatureCollection(): GeoJSON.FeatureCollection<GeoJSON.Point> {
+    return {
+      type: 'FeatureCollection',
+      features: this.markerEntries.map((entry) => entry.feature),
+    };
+  }
+
+  /** The full visibility filter: the shared type/severity clauses plus years. */
+  private buildFilterExpression(): ExpressionSpecification {
+    if (this.baseFilter === null) {
+      return ['all'];
+    }
+    if (this.yearFilter === null) {
+      return this.baseFilter;
+    }
+    // Undated markers can't be excluded by a year filter, so they stay visible.
+    return [
+      'all',
+      this.baseFilter,
+      [
+        'any',
+        ['!', ['has', 'year']],
+        ['in', ['get', 'year'], ['literal', [...this.yearFilter]]],
+      ],
+    ];
+  }
+
+  private applyFilter(): void {
+    const map = this.map;
+    if (map === null || map.getSource(this.sourceId) === undefined) {
+      // Not on the map yet — `applyToMap` bakes the filter into the new layer.
+      return;
+    }
+    try {
+      map.setFilter(this.layerId, this.buildFilterExpression());
+    } catch (error: unknown) {
+      if (isStyleBusyError(error)) {
+        map.once('idle', () => {
+          if (this.map === map) {
+            this.applyFilter();
+          }
+        });
+      } else {
+        throw error;
       }
     }
-    return changed;
-  }
-}
-
-function addToIndex<T>(
-  index: Map<T, AccidentMarkerEntry[]>,
-  key: T,
-  marker: AccidentMarkerEntry,
-): void {
-  const existingBucket = index.get(key);
-  if (existingBucket) {
-    existingBucket.push(marker);
-    return;
   }
 
-  index.set(key, [marker]);
+  private setLayerVisibility(
+    map: MapLibreMap,
+    visibility: 'visible' | 'none',
+  ): void {
+    if (map.getLayer(this.layerId) === undefined) {
+      // Not created yet: layers are created visible (only the attached source
+      // creates them), so a pending hide is a no-op.
+      return;
+    }
+    try {
+      map.setLayoutProperty(this.layerId, 'visibility', visibility);
+    } catch (error: unknown) {
+      if (isStyleBusyError(error)) {
+        map.once('idle', () => {
+          // Only retry if the desired state hasn't flipped meanwhile.
+          const stillWants =
+            visibility === 'visible' ? this.map === map : this.map !== map;
+          if (stillWants) {
+            this.setLayerVisibility(map, visibility);
+          }
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private bindClickHandler(map: MapLibreMap): void {
+    map.on('click', this.layerId, (event) => {
+      const feature = event.features?.[0];
+      if (feature?.geometry.type !== 'Point') {
+        return;
+      }
+      const popupId = Number(feature.properties?.popupId);
+      const popupProperties = this.popupPropertiesById.get(popupId);
+      if (popupProperties === undefined) {
+        return;
+      }
+      openAccidentPopup(
+        map,
+        feature.geometry.coordinates as [number, number],
+        renderAccidentPopup(resolvePopupProperties(popupProperties)),
+      );
+    });
+  }
 }

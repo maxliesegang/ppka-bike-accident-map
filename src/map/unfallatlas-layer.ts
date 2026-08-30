@@ -1,4 +1,4 @@
-import type * as L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { UNFALLATLAS_KARLSRUHE_REGION } from '../constants';
 import {
   attachAccidentMarkersForSource,
@@ -134,7 +134,7 @@ function setUnfallatlasYearSelected(year: number, selected: boolean): void {
 }
 
 export function showUnfallatlasLayer(
-  map: L.Map,
+  map: MapLibreMap,
   sourceId: UnfallatlasSourceId,
 ): void {
   if (sourceId !== state.sourceId) {
@@ -148,7 +148,7 @@ export function showUnfallatlasLayer(
   requestUnfallatlasMarkerLoad();
 }
 
-export function hideUnfallatlasLayer(map: L.Map): void {
+export function hideUnfallatlasLayer(map: MapLibreMap): void {
   state.isLayerVisible = false;
   state.hasQueuedReload = false;
   detachAccidentMarkersForSource(map, state.sourceId);

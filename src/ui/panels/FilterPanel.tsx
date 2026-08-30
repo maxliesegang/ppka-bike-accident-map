@@ -7,7 +7,7 @@ import {
   KernRadioGroup,
   KernText,
 } from '@kern-ux-annex/kern-react-kit';
-import type * as L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { useMemo, useSyncExternalStore } from 'react';
 import { localYearFilterController } from '../../map/accident-marker-store';
 import {
@@ -41,7 +41,7 @@ const DATA_SOURCE_OPTIONS = [
  * years to include. The visual key for the markers lives separately in the
  * bottom-left legend panel.
  */
-export function FilterPanel({ map }: { map: L.Map }) {
+export function FilterPanel({ map }: { map: MapLibreMap }) {
   const selectedDataSourceId = useSyncExternalStore(
     subscribeToDataSourceId,
     getSelectedDataSourceId,

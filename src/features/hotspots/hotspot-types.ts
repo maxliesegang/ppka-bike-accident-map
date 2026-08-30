@@ -12,8 +12,8 @@ export interface GeoPoint {
 
 /**
  * A single accident reduced to what spatial aggregation needs: a position and
- * its classification. Detached from Leaflet markers so the binning and ranking
- * code stays pure and unit-testable.
+ * its classification. Detached from the map's marker layer so the binning and
+ * ranking code stays pure and unit-testable.
  */
 export interface AccidentRecord extends GeoPoint {
   readonly accidentType: AccidentType;

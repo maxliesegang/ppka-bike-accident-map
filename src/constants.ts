@@ -1,13 +1,19 @@
-import type { LatLngExpression } from 'leaflet';
+import type { LngLatLike } from 'maplibre-gl';
 import type { AccidentType, SeverityType } from './data/accident-styles';
 
 // Map configuration
-export const MAP_INITIAL_VIEW: LatLngExpression = [49, 8.4];
+// MapLibre takes [longitude, latitude].
+export const MAP_INITIAL_CENTER: LngLatLike = [8.4, 49];
 export const MAP_ZOOM_LEVEL = 12;
-export const TILE_LAYER_URL =
-  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+export const MAP_MAX_ZOOM_LEVEL = 19;
+// OpenStreetMap raster tiles: keyless and policy-compliant for this app's
+// low-traffic, attribution-backed use. (CARTO's basemaps, the previous choice,
+// now require an API key.)
+export const TILE_LAYER_TILES = [
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+] as const;
 export const TILE_LAYER_ATTRIBUTION =
-  '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 // Unfallatlas CSV configuration
 // Used as fallback when manifest discovery fails.

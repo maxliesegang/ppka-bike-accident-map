@@ -4,20 +4,21 @@ Guidance for contributors and coding agents working in this repository.
 
 ## Scope
 
-- TypeScript + Vite + Leaflet browser app.
+- TypeScript + Vite + MapLibre GL JS browser app.
 - Entry point: `src/index.ts`.
 - GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer.ts`.
 - Local (FragDenStaat) source: `src/map/local-accident-layer.ts` loads the GeoPackage (2018-2023) and the PPKA CSV (`src/map/ppka-loader.ts`, geocoded years only) into a single registration batch.
 - CSV parsing helpers shared by the PPKA and Unfallatlas loaders: `src/data/csv.ts`.
 - Linting and formatting: Biome (`biome.json`) — single tool replacing ESLint and Prettier.
 - Style/type definitions: `src/data/accident-styles.ts` — single source of truth for `AccidentType`, `SeverityType`, colors, and radii.
-- Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom Leaflet controls with React-rendered panels (not `L.control.layers`).
+- Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom MapLibre `IControl`s with React-rendered panels (not `L.control.layers`-style built-ins).
 - Filter state: `src/map/accident-marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
 
 ## Architecture Notes
 
-- Map uses `preferCanvas: true` for performance — all markers render on a single Canvas element.
-- Markers are `L.circleMarker` instances created directly from GeoJSON coordinates (not via `L.geoJSON`).
+- Each data source owns a MapLibre GeoJSON source + shared circle layer (`src/map/accident-marker-source-state.ts`); visibility is a filter expression over feature properties applied with `setFilter`, never per-marker layer toggles.
+- Feature properties carry the render style (`color`, `radius`) and the filter keys (`accidentType`, `severityType`, `year`); popups resolve their content through a per-source registry keyed by the feature's `popupId`.
+- `map.ts` wires MapLibre's worker through Vite's `?worker&url` import — MapLibre's default `import.meta.url`-relative worker resolution does not survive the Vite build.
 - GeoPackage features are iterated with `for...of` — never materialized into an array.
 - The PPKA CSV is streamed row by row for the same reason; its pre-2024 rows duplicate GeoPackage records (they carry the GeoPackage `UN_KEY` in `Original_Unfall_ID`) and must stay skipped.
 - `tsconfig.json` has `"strict": true` — all code must pass strict type checking.

@@ -1,15 +1,13 @@
-import * as L from 'leaflet';
 import type { AccidentProperties } from '../data/accident-properties';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
+import { getAccidentColor, getSeverityRadius } from '../data/accident-styles';
 import {
   getAccidentType,
-  getMarkerStyle,
   getSeverityType,
 } from '../features/accident-classification';
+import type { AccidentPopupPropertySource } from './accident-marker-source-state';
 import { registerAccidentMarker } from './accident-marker-store';
-import { renderAccidentPopup } from './accident-popup-renderer';
 import type { DataSourceId } from './data-source-types';
-import { ACCIDENT_POPUP_OPTIONS } from './popup-options';
 
 export interface AccidentMarkerData {
   latitude: number;
@@ -21,20 +19,10 @@ export interface AccidentMarkerData {
   popupProperties: AccidentPopupPropertySource;
 }
 
-export type AccidentPopupPropertySource =
-  | Record<string, unknown>
-  | (() => Record<string, unknown>);
-
-const ACCIDENT_POPUP_PROPERTIES_SYMBOL = Symbol('popupProperties');
-
-type AccidentMarkerWithPopupProperties = L.CircleMarker & {
-  [ACCIDENT_POPUP_PROPERTIES_SYMBOL]: AccidentPopupPropertySource;
-};
-
 export function createAndRegisterGeoPackageAccidentMarker(
   feature: GeoJSON.Feature,
   dataSourceId: DataSourceId = 'local',
-): L.CircleMarker | null {
+): GeoJSON.Feature<GeoJSON.Point> | null {
   if (!hasValidPointGeometry(feature.geometry)) {
     return null;
   }
@@ -82,29 +70,45 @@ function parseYearFromKoUdatum(value: unknown): number | null {
   return Number.isInteger(year) ? year : null;
 }
 
+/**
+ * Turns the classification into a GeoJSON point whose properties carry
+ * everything the shared circle layer and filter expressions need: `color` and
+ * `radius` for the paint, `accidentType`/`severityType`/`year` for the
+ * visibility filter. The popup property source is kept out of the feature —
+ * it lives in the source's popup registry, keyed by the `popupId` assigned at
+ * registration.
+ */
 export function createAndRegisterAccidentMarker(
   accidentMarkerData: AccidentMarkerData,
   dataSourceId: DataSourceId,
-): L.CircleMarker {
-  const marker = L.circleMarker(
-    [accidentMarkerData.latitude, accidentMarkerData.longitude],
-    getMarkerStyle(
-      accidentMarkerData.accidentType,
-      accidentMarkerData.severityType,
-    ),
-  ) as AccidentMarkerWithPopupProperties;
-  marker[ACCIDENT_POPUP_PROPERTIES_SYMBOL] = accidentMarkerData.popupProperties;
-  marker.bindPopup(renderPopupContent, ACCIDENT_POPUP_OPTIONS);
+): GeoJSON.Feature<GeoJSON.Point> {
+  const feature: GeoJSON.Feature<GeoJSON.Point> = {
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [accidentMarkerData.longitude, accidentMarkerData.latitude],
+    },
+    properties: {
+      accidentType: accidentMarkerData.accidentType,
+      severityType: accidentMarkerData.severityType,
+      color: getAccidentColor(accidentMarkerData.accidentType),
+      radius: getSeverityRadius(accidentMarkerData.severityType),
+      ...(accidentMarkerData.year === null
+        ? {}
+        : { year: accidentMarkerData.year }),
+    },
+  };
 
   registerAccidentMarker(
-    marker,
+    feature,
     accidentMarkerData.accidentType,
     accidentMarkerData.severityType,
     accidentMarkerData.year,
+    accidentMarkerData.popupProperties,
     dataSourceId,
   );
 
-  return marker;
+  return feature;
 }
 
 function hasValidPointGeometry(
@@ -115,13 +119,4 @@ function hasValidPointGeometry(
 
 function isFiniteCoordinate(value: number): boolean {
   return Number.isFinite(value);
-}
-
-function renderPopupContent(layer: L.Layer): string {
-  const marker = layer as AccidentMarkerWithPopupProperties;
-  const popupSource = marker[ACCIDENT_POPUP_PROPERTIES_SYMBOL];
-  const popupProperties =
-    typeof popupSource === 'function' ? popupSource() : popupSource;
-
-  return renderAccidentPopup(popupProperties);
 }

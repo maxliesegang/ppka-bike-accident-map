@@ -1,4 +1,4 @@
-@import "leaflet/dist/leaflet.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 @import "@kern-ux-annex/kern-react-kit/kern-react-kit.css";
 
 /* Base for KERN's rem-sized components. Kept below the 16px default so the
@@ -22,22 +22,21 @@ html {
   right: 0;
 }
 
-/* Marker popups — Kern UX content inside Leaflet's popup frame. */
-.accident-popup .leaflet-popup-content-wrapper {
+/* Marker popups — Kern UX content inside MapLibre's popup frame. The content
+ * box carries the card styling; the tip below picks up only the border. */
+.accident-popup .maplibregl-popup-content {
+  margin: 0;
+  padding: 0;
   border-radius: var(--kern-metric-border-radius-large, 8px);
   border: 1px solid var(--kern-color-layout-border, #d9e1e8);
   box-shadow:
     0 1px 2px rgba(16, 24, 40, 0.08),
     0 8px 24px rgba(16, 24, 40, 0.12);
   overflow: hidden;
+  width: min(360px, calc(100vw - 48px));
 }
 
-.accident-popup .leaflet-popup-content {
-  margin: 0;
-  width: min(360px, calc(100vw - 48px)) !important;
-}
-
-.accident-popup .leaflet-popup-tip {
+.accident-popup .maplibregl-popup-tip {
   border: 1px solid var(--kern-color-layout-border, #d9e1e8);
 }
 
@@ -191,7 +190,7 @@ html {
 }
 
 /* "Alle Angaben" is the full raw-field dump — power-use content kept out of the
- * default scan view behind a native disclosure (no JS, so it survives Leaflet's
+  * default scan view behind a native disclosure (no JS, so it survives the
  * static-markup rendering). */
 .popup-disclosure {
   display: grid;
@@ -296,8 +295,8 @@ html {
 }
 
 @media (max-width: 380px) {
-  .accident-popup .leaflet-popup-content {
-    width: calc(100vw - 40px) !important;
+  .accident-popup .maplibregl-popup-content {
+    width: calc(100vw - 40px);
   }
 
   .popup-container {

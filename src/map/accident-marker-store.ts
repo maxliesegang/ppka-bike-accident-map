@@ -1,9 +1,10 @@
-import type * as L from 'leaflet';
+import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   type AccidentMarkerEntry,
   AccidentMarkerSourceState,
+  type AccidentPopupPropertySource,
 } from './accident-marker-source-state';
 import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
 import { FilterSelection } from './filter-selection';
@@ -18,36 +19,22 @@ const accidentMarkerStateBySource: Record<
   DataSourceId,
   AccidentMarkerSourceState
 > = {
-  local: new AccidentMarkerSourceState(),
-  'unfallatlas-karlsruhe': new AccidentMarkerSourceState(),
-  unfallatlas: new AccidentMarkerSourceState(),
+  local: new AccidentMarkerSourceState('local'),
+  'unfallatlas-karlsruhe': new AccidentMarkerSourceState(
+    'unfallatlas-karlsruhe',
+  ),
+  unfallatlas: new AccidentMarkerSourceState('unfallatlas'),
 };
-
-/**
- * A filter dimension the user can toggle (accident type, severity type). It owns
- * the selection set and knows how to push a single key's new visibility into a
- * source's marker layer. Modelling both dimensions the same way keeps the toggle
- * plumbing below symmetric — adding a third filter is one more entry here.
- */
-interface MarkerFilterDimension<T> {
-  readonly selection: FilterSelection<T>;
-  applyVisibility(source: AccidentMarkerSourceState, key: T): void;
-}
 
 // The dimension selections are the single source of truth for which accident and
 // severity types are visible. React panels read them through the getters below
 // and re-render via `subscribeToAccidentMarkerFilters`; they never keep their own copy.
-const accidentTypeDimension: MarkerFilterDimension<AccidentType> = {
-  selection: new FilterSelection(ACCIDENT_LEGENDS.map(({ type }) => type)),
-  applyVisibility: (source, type) =>
-    source.updateAccidentTypeVisibility(type, isMarkerSelected),
-};
-
-const severityTypeDimension: MarkerFilterDimension<SeverityType> = {
-  selection: new FilterSelection(SEVERITY_LEGENDS.map(({ type }) => type)),
-  applyVisibility: (source, type) =>
-    source.updateSeverityTypeVisibility(type, isMarkerSelected),
-};
+const accidentTypeSelection = new FilterSelection(
+  ACCIDENT_LEGENDS.map(({ type }) => type),
+);
+const severityTypeSelection = new FilterSelection(
+  SEVERITY_LEGENDS.map(({ type }) => type),
+);
 
 const accidentMarkerFilterListeners = new Set<() => void>();
 // Fires when the underlying accident set changes (a source is (re)loaded or
@@ -55,7 +42,7 @@ const accidentMarkerFilterListeners = new Set<() => void>();
 // as the hotspot store recompute on both signals.
 const accidentMarkerDataListeners = new Set<() => void>();
 
-export function attachLocalAccidentMarkers(map: L.Map): void {
+export function attachLocalAccidentMarkers(map: MapLibreMap): void {
   attachAccidentMarkersForSource(map, 'local');
 }
 
@@ -75,34 +62,33 @@ export function beginAccidentMarkerBatch(
 export function endAccidentMarkerBatch(
   dataSourceId: DataSourceId = 'local',
 ): void {
-  accidentMarkerStateBySource[dataSourceId].endRegistrationBatch(
-    isMarkerSelected,
-  );
+  accidentMarkerStateBySource[dataSourceId].endRegistrationBatch();
   notifyAccidentMarkerDataChanged();
 }
 
 export function registerAccidentMarker(
-  marker: L.CircleMarker,
+  feature: GeoJSON.Feature<GeoJSON.Point>,
   accidentType: AccidentType,
   severityType: SeverityType,
   year: number | null,
+  popupProperties: AccidentPopupPropertySource,
   dataSourceId: DataSourceId = 'local',
 ): void {
-  accidentMarkerStateBySource[dataSourceId].registerMarker(
-    marker,
+  accidentMarkerStateBySource[dataSourceId].registerFeature(
+    feature,
     accidentType,
     severityType,
     year,
-    isMarkerSelected,
+    popupProperties,
   );
 }
 
 export function getSelectedAccidentTypes(): ReadonlySet<AccidentType> {
-  return accidentTypeDimension.selection.values;
+  return accidentTypeSelection.values;
 }
 
 export function getSelectedSeverityTypes(): ReadonlySet<SeverityType> {
-  return severityTypeDimension.selection.values;
+  return severityTypeSelection.values;
 }
 
 export function subscribeToAccidentMarkerFilters(
@@ -135,32 +121,35 @@ export function isAccidentVisible(
   accidentType: AccidentType,
   severityType: SeverityType,
 ): boolean {
-  return isMarkerSelected(accidentType, severityType);
+  return (
+    accidentTypeSelection.has(accidentType) &&
+    severityTypeSelection.has(severityType)
+  );
 }
 
 export function setAccidentTypeSelected(
   accidentType: AccidentType,
   selected: boolean,
 ): void {
-  setDimensionSelected(accidentTypeDimension, accidentType, selected);
+  setSelection(accidentTypeSelection, accidentType, selected);
 }
 
 export function setSeverityTypeSelected(
   severityType: SeverityType,
   selected: boolean,
 ): void {
-  setDimensionSelected(severityTypeDimension, severityType, selected);
+  setSelection(severityTypeSelection, severityType, selected);
 }
 
 export function attachAccidentMarkersForSource(
-  map: L.Map,
+  map: MapLibreMap,
   dataSourceId: DataSourceId,
 ): void {
-  accidentMarkerStateBySource[dataSourceId].attachToMap(map, isMarkerSelected);
+  accidentMarkerStateBySource[dataSourceId].attachToMap(map, buildBaseFilter());
 }
 
 export function detachAccidentMarkersForSource(
-  map: L.Map,
+  map: MapLibreMap,
   dataSourceId: DataSourceId,
 ): void {
   accidentMarkerStateBySource[dataSourceId].detachFromMap(map);
@@ -175,19 +164,43 @@ export function setLocalYearFilterStatus(status: YearFilterStatus): void {
   notifyYearFilterChanged();
 }
 
-function setDimensionSelected<T>(
-  dimension: MarkerFilterDimension<T>,
+function setSelection<T>(
+  selection: FilterSelection<T>,
   key: T,
   selected: boolean,
 ): void {
-  if (!dimension.selection.toggle(key, selected)) {
+  if (!selection.toggle(key, selected)) {
     return;
   }
 
+  // Visibility is a filter expression over feature properties, so every source
+  // layer just picks up the rebuilt clauses — no per-marker bookkeeping.
+  const baseFilter = buildBaseFilter();
   for (const dataSourceId of DATA_SOURCE_IDS) {
-    dimension.applyVisibility(accidentMarkerStateBySource[dataSourceId], key);
+    accidentMarkerStateBySource[dataSourceId].setBaseFilter(baseFilter);
   }
   notifyAccidentMarkerFiltersChanged();
+}
+
+/**
+ * The type/severity clauses every accident layer filters on, expressed over the
+ * feature properties stamped by the marker factory. The per-source year filter
+ * is appended by the source state itself.
+ */
+function buildBaseFilter(): ExpressionSpecification {
+  return [
+    'all',
+    [
+      'in',
+      ['get', 'accidentType'],
+      ['literal', [...accidentTypeSelection.values]],
+    ],
+    [
+      'in',
+      ['get', 'severityType'],
+      ['literal', [...severityTypeSelection.values]],
+    ],
+  ];
 }
 
 function notifyAccidentMarkerFiltersChanged(): void {
@@ -218,7 +231,7 @@ let localAvailableYears: readonly number[] = [];
 let localSelectedYears: readonly number[] = [];
 
 /**
- * Whether a marker of this year passes the source's year filter. Analytics
+ * Whether an accident of this year passes the source's year filter. Analytics
  * consumers (e.g. the hotspot ranking) use it to mirror the year selection that
  * the map applies. Sources without a year filter report every year as visible.
  */
@@ -255,10 +268,7 @@ function setLocalSelectedYears(years: readonly number[]): void {
   // Full selection is represented as "no filter" so newly loaded years stay
   // visible by default.
   const filter = selected.size === available.size ? null : selected;
-  accidentMarkerStateBySource[LOCAL_SOURCE_ID].setYearFilter(
-    filter,
-    isMarkerSelected,
-  );
+  accidentMarkerStateBySource[LOCAL_SOURCE_ID].setYearFilter(filter);
   recomputeLocalYearCaches();
 }
 
@@ -291,14 +301,4 @@ function notifyYearFilterChanged(): void {
   for (const listener of yearFilterListeners) {
     listener();
   }
-}
-
-function isMarkerSelected(
-  accidentType: AccidentType,
-  severityType: SeverityType,
-): boolean {
-  return (
-    accidentTypeDimension.selection.has(accidentType) &&
-    severityTypeDimension.selection.has(severityType)
-  );
 }

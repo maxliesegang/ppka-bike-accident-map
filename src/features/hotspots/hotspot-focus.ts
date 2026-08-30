@@ -1,25 +1,30 @@
-import * as L from 'leaflet';
+import { GeoJSONSource, type Map as MapLibreMap } from 'maplibre-gl';
 import type { DataSourceId } from '../../map/data-source-types';
-import { ACCIDENT_POPUP_OPTIONS } from '../../map/popup-options';
+import { openAccidentPopup } from '../../map/map-popup';
 import { renderHotspotPopup } from './hotspot-popup-renderer';
 import { getHotspotDisplayRadiusMeters, type Hotspot } from './hotspot-types';
 
 /** Zoom the map reaches when a hotspot is selected, unless already closer in. */
 const HOTSPOT_FOCUS_ZOOM = 17;
 
-/** Leaflet style for the area circle drawn around the focused hotspot. */
-const HOTSPOT_CIRCLE_STYLE: L.CircleMarkerOptions = {
-  color: '#d4351c',
-  weight: 2,
-  fillColor: '#d4351c',
-  fillOpacity: 0.12,
-  interactive: false,
+const HOTSPOT_AREA_SOURCE_ID = 'hotspot-focus-area';
+const HOTSPOT_AREA_LAYER_ID = 'hotspot-focus-area';
+const HOTSPOT_AREA_ZOOM_MAX = 22;
+const HOTSPOT_AREA_COLOR = '#d4351c';
+
+// Web-mercator ground resolution: metres covered by one pixel at zoom 0 with
+// 256 px tiles (the equatorial circumference divided by the tile width).
+const EARTH_CIRCUMFERENCE_METERS = 40_075_016.686;
+const METERS_PER_PIXEL_AT_ZOOM_0 = EARTH_CIRCUMFERENCE_METERS / 256;
+
+const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+  type: 'FeatureCollection',
+  features: [],
 };
 
-// Only one hotspot is focused at a time, so a single shared circle is tracked at
-// module scope and replaced on each focus / cleared when the popup closes.
-let activeCircle: L.Circle | null = null;
-let popupCloseBound = false;
+// Only one hotspot is focused at a time, so the area circle is a single-feature
+// GeoJSON source replaced on each focus and emptied when the popup closes.
+let activeAreaMap: MapLibreMap | null = null;
 
 /**
  * Flies the map to a hotspot, draws a circle covering the area its accidents were
@@ -29,47 +34,100 @@ let popupCloseBound = false;
  * past the focus level keeps their closer view.
  */
 export function focusHotspot(
-  map: L.Map,
+  map: MapLibreMap,
   hotspot: Hotspot,
   dataSourceId: DataSourceId,
   rank: number,
 ): void {
-  const target: L.LatLngExpression = [hotspot.lat, hotspot.lng];
+  const target: [number, number] = [hotspot.lng, hotspot.lat];
   const targetZoom = Math.max(map.getZoom(), HOTSPOT_FOCUS_ZOOM);
 
-  clearActiveCircle();
-  bindPopupClose(map);
+  clearActiveArea();
+  map.flyTo({ center: target, zoom: targetZoom });
 
-  map.flyTo(target, targetZoom);
-
-  // Open the popup first: it synchronously closes any previous hotspot popup and
-  // fires `popupclose` (clearing the already-null circle). Only then draw the new
-  // circle, so that stale event cannot remove it.
-  L.popup(ACCIDENT_POPUP_OPTIONS)
-    .setLatLng(target)
-    .setContent(renderHotspotPopup(hotspot, dataSourceId, rank))
-    .openOn(map);
-
-  activeCircle = L.circle(target, {
-    ...HOTSPOT_CIRCLE_STYLE,
-    radius: getHotspotDisplayRadiusMeters(hotspot),
-  }).addTo(map);
+  // Open the popup first: it synchronously closes any previous hotspot popup
+  // and fires its `close` (clearing the already-null circle). Only then draw
+  // the new circle, so that stale close event cannot remove it.
+  openAccidentPopup(
+    map,
+    target,
+    renderHotspotPopup(hotspot, dataSourceId, rank),
+    clearActiveArea,
+  );
+  showFocusArea(map, hotspot);
 }
 
-function clearActiveCircle(): void {
-  if (activeCircle) {
-    activeCircle.remove();
-    activeCircle = null;
-  }
-}
-
-// The circle is a companion to the popup: once the popup is dismissed the area
-// cue has no owner, so it is removed too. Registered once per map — a fresh focus
-// replaces the circle up front, so the stale close event has nothing to clear.
-function bindPopupClose(map: L.Map): void {
-  if (popupCloseBound) {
+function clearActiveArea(): void {
+  const map = activeAreaMap;
+  if (map === null) {
     return;
   }
-  popupCloseBound = true;
-  map.on('popupclose', clearActiveCircle);
+  activeAreaMap = null;
+  const source = map.getSource(HOTSPOT_AREA_SOURCE_ID);
+  if (source instanceof GeoJSONSource) {
+    source.setData(EMPTY_FEATURE_COLLECTION);
+  }
+}
+
+/**
+ * The focused area as a point feature carrying its circle size in screen pixels
+ * at two zoom anchors. Paired with the layer's exponential (2×) zoom
+ * interpolation, the drawn radius keeps a constant ground size in metres — the
+ * web-mercator metres-per-pixel halving per zoom cancels out exactly.
+ */
+function toAreaFeature(hotspot: Hotspot): GeoJSON.Feature<GeoJSON.Point> {
+  const radiusMeters = getHotspotDisplayRadiusMeters(hotspot);
+  // The mercator scale factor cos(latitude) is fixed per feature, so it is
+  // folded into the pixel radii here rather than evaluated per frame.
+  const radiusPixelsAtZoom0 =
+    radiusMeters /
+    (METERS_PER_PIXEL_AT_ZOOM_0 * Math.cos((hotspot.lat * Math.PI) / 180));
+  return {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [hotspot.lng, hotspot.lat] },
+    properties: {
+      radiusPixelsAtZoom0,
+      radiusPixelsAtZoom22: radiusPixelsAtZoom0 * 2 ** HOTSPOT_AREA_ZOOM_MAX,
+    },
+  };
+}
+
+function showFocusArea(map: MapLibreMap, hotspot: Hotspot): void {
+  if (map.getSource(HOTSPOT_AREA_SOURCE_ID) === undefined) {
+    map.addSource(HOTSPOT_AREA_SOURCE_ID, {
+      type: 'geojson',
+      data: EMPTY_FEATURE_COLLECTION,
+    });
+    map.addLayer({
+      id: HOTSPOT_AREA_LAYER_ID,
+      type: 'circle',
+      source: HOTSPOT_AREA_SOURCE_ID,
+      paint: {
+        'circle-radius': [
+          'interpolate',
+          ['exponential', 2],
+          ['zoom'],
+          0,
+          ['get', 'radiusPixelsAtZoom0'],
+          HOTSPOT_AREA_ZOOM_MAX,
+          ['get', 'radiusPixelsAtZoom22'],
+        ],
+        'circle-color': HOTSPOT_AREA_COLOR,
+        'circle-opacity': 0.12,
+        'circle-stroke-color': HOTSPOT_AREA_COLOR,
+        'circle-stroke-width': 2,
+        'circle-stroke-opacity': 1,
+      },
+    });
+  }
+
+  const source = map.getSource(HOTSPOT_AREA_SOURCE_ID);
+  if (!(source instanceof GeoJSONSource)) {
+    return;
+  }
+  source.setData({
+    type: 'FeatureCollection',
+    features: [toAreaFeature(hotspot)],
+  });
+  activeAreaMap = map;
 }

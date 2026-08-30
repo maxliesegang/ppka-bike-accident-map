@@ -1,4 +1,4 @@
-import type * as L from 'leaflet';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import {
   attachLocalAccidentMarkers,
   beginAccidentMarkerBatch,
@@ -18,7 +18,9 @@ const LOCAL_SOURCE_ID: DataSourceId = 'local';
  * geocoded rows extend the series past it. Both feed one registration batch so
  * the map and the year filter see the combined set in a single update.
  */
-export async function loadLocalAccidentMarkers(map: L.Map): Promise<void> {
+export async function loadLocalAccidentMarkers(
+  map: MapLibreMap,
+): Promise<void> {
   setLocalYearFilterStatus('loading');
   attachLocalAccidentMarkers(map);
   clearAccidentMarkersForSource(LOCAL_SOURCE_ID);

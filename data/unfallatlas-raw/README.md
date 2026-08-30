@@ -1,8 +1,11 @@
-Place raw Unfallatlas CSV exports in this folder.
+# Raw Unfallatlas data
 
-- This directory is intentionally gitignored for large source files.
-- Keep original yearly files here (for example `opendata2024.csv`).
-- Generate app-ready filtered files with:
-  - `npm run unfallatlas:extract:bw`
+Place the extracted yearly Unfallatlas CSV files in this directory. The directory is gitignored because the source files are large.
 
-The extraction script writes filtered files to `data/unfallatlas`.
+Prepare app-ready Baden-Württemberg files with:
+
+```bash
+npm run unfallatlas:extract:bw
+```
+
+The script writes filtered files to `data/unfallatlas`. Keep the original files here so they can be reprocessed.
