@@ -1,5 +1,5 @@
-import { addTileLayer, createMap } from './map/map';
 import { loadLocalAccidentMarkers } from './map/local-accident-layer';
+import { addTileLayer, createMap } from './map/map';
 import { addPanelControls } from './map/panel-controls';
 import './styles.css';
 

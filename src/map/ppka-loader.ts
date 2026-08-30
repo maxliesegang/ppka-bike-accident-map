@@ -1,4 +1,5 @@
 import { PPKA_CSV_PATH, PPKA_SOURCE_NAME } from '../constants';
+import type { AccidentCasualtyTotals } from '../data/accident-properties';
 import {
   CSV_YIELD_INTERVAL,
   createCsvHeaderIndex,
@@ -8,7 +9,6 @@ import {
   parseCsvInteger,
   yieldToEventLoop,
 } from '../data/csv';
-import type { AccidentCasualtyTotals } from '../data/accident-properties';
 import {
   getAccidentType,
   getLocalSeverityTypeFromCasualties,
@@ -17,7 +17,7 @@ import {
   type AccidentMarkerData,
   createAndRegisterAccidentMarker,
 } from './accident-marker-factory';
-import { type DataSourceId } from './data-source-types';
+import type { DataSourceId } from './data-source-types';
 
 /**
  * The unified PPKA export. It restates the 2018-2023 accidents already shipped

@@ -1,8 +1,8 @@
-import { GeoPackage } from '@ngageoint/geopackage';
+import type { GeoPackage } from '@ngageoint/geopackage';
 import { GEOPACKAGE_FILE_NAME, GEOPACKAGE_LAYER_NAME } from '../constants';
-import { fetchAndOpenGeoPackage } from './geopackage-loader';
 import { createAndRegisterGeoPackageAccidentMarker } from './accident-marker-factory';
-import { type DataSourceId } from './data-source-types';
+import type { DataSourceId } from './data-source-types';
+import { fetchAndOpenGeoPackage } from './geopackage-loader';
 
 export interface GeoPackageLoadResult {
   markerCount: number;

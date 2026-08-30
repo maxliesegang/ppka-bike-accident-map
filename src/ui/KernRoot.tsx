@@ -1,5 +1,5 @@
-import { StrictMode, type ReactNode } from 'react';
 import { KernContextProvider } from '@kern-ux-annex/kern-react-kit';
+import { type ReactNode, StrictMode } from 'react';
 
 /**
  * Shared wrapper for every React tree in the app. Provides the Kern UX context

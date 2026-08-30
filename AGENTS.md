@@ -9,6 +9,7 @@ Guidance for contributors and coding agents working in this repository.
 - GeoPackage loading: `src/map/geopackage-loader.ts` and `src/map/geopackage-layer.ts`.
 - Local (FragDenStaat) source: `src/map/local-accident-layer.ts` loads the GeoPackage (2018-2023) and the PPKA CSV (`src/map/ppka-loader.ts`, geocoded years only) into a single registration batch.
 - CSV parsing helpers shared by the PPKA and Unfallatlas loaders: `src/data/csv.ts`.
+- Linting and formatting: Biome (`biome.json`) — single tool replacing ESLint and Prettier.
 - Style/type definitions: `src/data/accident-styles.ts` — single source of truth for `AccidentType`, `SeverityType`, colors, and radii.
 - Filter UI: `src/map/panel-controls.ts` and `src/ui/` — custom Leaflet controls with React-rendered panels (not `L.control.layers`).
 - Filter state: `src/map/accident-marker-store.ts` — manages marker visibility via `Set`-based selection tracking.
@@ -24,7 +25,7 @@ Guidance for contributors and coding agents working in this repository.
 ## Environment
 
 - Node.js `>=22`, npm `>=10` (see `package.json` engines).
-- Optional dependencies omitted via `.npmrc` (`omit=optional`).
+- Optional dependencies must be installed — Biome and esbuild deliver their platform binaries as optional packages. Do not reintroduce `omit=optional` (removed when switching to Biome).
 
 ## Required Commands
 
@@ -39,8 +40,8 @@ npm run build
 ## Dependency and Build Rules
 
 - Prefer latest stable dependencies, but:
-  - Do not upgrade to ESLint 10 until `typescript-eslint` supports it.
-  - Keep Vite on a version that works with `.npmrc` `omit=optional`; Vite 7 uses the `rollup` override to `@rollup/wasm-node`, while Vite 8's native Rolldown binding currently conflicts with that install policy.
+- Keep linting and formatting on Biome; keep `npm run lint` clean.
+  - Keep Vite on 7 with the `rollup` override to `@rollup/wasm-node` (no native Rollup binary needed); Vite 8's Rolldown toolchain is untested in this setup.
 - Keep browser Node.js polyfills absent unless strongly justified.
 - Keep local GeoPackage WASM loading intact:
   - `src/constants.ts` must expose `GEOPACKAGE_WASM_FILE = 'sql-wasm.wasm'`.

@@ -1,5 +1,5 @@
-import { LatLngExpression } from 'leaflet';
-import { AccidentType, SeverityType } from './data/accident-styles';
+import type { LatLngExpression } from 'leaflet';
+import type { AccidentType, SeverityType } from './data/accident-styles';
 
 // Map configuration
 export const MAP_INITIAL_VIEW: LatLngExpression = [49, 8.4];

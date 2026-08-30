@@ -3,13 +3,13 @@ import type { AccidentProperties } from '../data/accident-properties';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
 import {
   getAccidentType,
-  getSeverityType,
   getMarkerStyle,
+  getSeverityType,
 } from '../features/accident-classification';
-import { renderAccidentPopup } from './accident-popup-renderer';
-import { ACCIDENT_POPUP_OPTIONS } from './popup-options';
-import { type DataSourceId } from './data-source-types';
 import { registerAccidentMarker } from './accident-marker-store';
+import { renderAccidentPopup } from './accident-popup-renderer';
+import type { DataSourceId } from './data-source-types';
+import { ACCIDENT_POPUP_OPTIONS } from './popup-options';
 
 export interface AccidentMarkerData {
   latitude: number;
@@ -22,7 +22,8 @@ export interface AccidentMarkerData {
 }
 
 export type AccidentPopupPropertySource =
-  Record<string, unknown> | (() => Record<string, unknown>);
+  | Record<string, unknown>
+  | (() => Record<string, unknown>);
 
 const ACCIDENT_POPUP_PROPERTIES_SYMBOL = Symbol('popupProperties');
 

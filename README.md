@@ -37,11 +37,10 @@ cd ppka-bike-accident-map
 Run the following command to install required dependencies:
 
 ```bash
-npm ci --omit=optional
+npm ci
 ```
 
-Note: `.npmrc` already configures `omit=optional`, so `npm ci` behaves the same.
-The project uses a Rollup WASM override so Vite works with optional dependencies omitted.
+Note: the project uses a Rollup WASM override so Vite does not depend on a native Rollup binary.
 
 ### 3. Run the Development Server
 
@@ -129,7 +128,7 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
 - **Leaflet**: Lightweight JavaScript library for interactive maps.
 - **GeoPackage**: Used for handling local geospatial data files efficiently.
 - **Vite**: Bundles the project for development and production.
-- **ESLint & Prettier**: Enforces coding standards and automatic formatting.
+- **Biome**: Lints and formats the codebase in a single tool.
 
 ## How the Application Works
 
@@ -143,5 +142,5 @@ npm run unfallatlas:extract -- --bundesland <name-or-code>
 
 - **Linting**: Run `npm run lint` to lint the codebase, or `npm run lint:fix` to auto-fix supported issues.
 - **Type checking**: Run `npm run typecheck` to run TypeScript type checks without emitting files.
-- **Prettier**: Run `npm run format` to format the codebase.
+- **Formatting**: Run `npm run format` to format the codebase (Biome).
 - **Security audit**: Run `npm audit` to verify dependency vulnerability status.

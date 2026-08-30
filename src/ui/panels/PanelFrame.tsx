@@ -1,10 +1,10 @@
-import { type ReactNode, useState } from 'react';
 import {
   KernButton,
   KernHeading,
-  KernText,
   type KernIconType,
+  KernText,
 } from '@kern-ux-annex/kern-react-kit';
+import { type ReactNode, useState } from 'react';
 
 interface PanelFrameProps {
   /** Placement modifier, e.g. `cp--filter` or `cp--legend`. */

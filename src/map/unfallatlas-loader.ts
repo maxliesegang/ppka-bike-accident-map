@@ -1,15 +1,10 @@
 import {
-  UNFALLATLAS_FALLBACK_YEARS,
   UNFALLATLAS_CSV_PATH_TEMPLATES,
+  UNFALLATLAS_FALLBACK_YEARS,
   UNFALLATLAS_MANIFEST_FILE,
   UNFALLATLAS_SOURCE_NAME,
 } from '../constants';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
-import {
-  type AccidentMarkerData,
-  createAndRegisterAccidentMarker,
-} from './accident-marker-factory';
-import { type DataSourceId } from './data-source-types';
 import {
   CSV_YIELD_INTERVAL,
   createCsvHeaderIndex,
@@ -19,6 +14,11 @@ import {
   parseCsvInteger,
   yieldToEventLoop,
 } from '../data/csv';
+import {
+  type AccidentMarkerData,
+  createAndRegisterAccidentMarker,
+} from './accident-marker-factory';
+import type { DataSourceId } from './data-source-types';
 
 const REQUIRED_COLUMNS = [
   'UJAHR',

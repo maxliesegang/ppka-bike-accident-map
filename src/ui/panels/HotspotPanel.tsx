@@ -1,12 +1,12 @@
-import { useSyncExternalStore } from 'react';
-import type * as L from 'leaflet';
 import { KernText } from '@kern-ux-annex/kern-react-kit';
+import type * as L from 'leaflet';
+import { useSyncExternalStore } from 'react';
 import { getAccidentColor } from '../../data/accident-styles';
 import { focusHotspot } from '../../features/hotspots/hotspot-focus';
 import {
-  getHotspotCaveat,
   formatAccidentCount,
   getAccidentTypeLabel,
+  getHotspotCaveat,
 } from '../../features/hotspots/hotspot-labels';
 import {
   getRankedHotspots,

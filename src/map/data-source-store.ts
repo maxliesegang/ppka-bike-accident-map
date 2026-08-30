@@ -1,12 +1,12 @@
 import {
-  showUnfallatlasLayer,
-  hideUnfallatlasLayer,
-} from './unfallatlas-layer';
-import {
   attachAccidentMarkersForSource,
   detachAccidentMarkersForSource,
 } from './accident-marker-store';
-import { type DataSourceId } from './data-source-types';
+import type { DataSourceId } from './data-source-types';
+import {
+  hideUnfallatlasLayer,
+  showUnfallatlasLayer,
+} from './unfallatlas-layer';
 
 let selectedDataSourceId: DataSourceId = 'local';
 const dataSourceListeners = new Set<(dataSourceId: DataSourceId) => void>();

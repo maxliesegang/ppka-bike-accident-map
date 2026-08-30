@@ -9,9 +9,9 @@
     "preview": "vite preview",
     "unfallatlas:extract": "node scripts/extract-unfallatlas-bundesland.mjs",
     "unfallatlas:extract:bw": "node scripts/extract-unfallatlas-bundesland.mjs --bundesland baden-wuerttemberg --only-bike-pedestrian",
-    "format": "prettier --write .",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
@@ -26,22 +26,19 @@
   },
   "overrides": {
     "file-type": "^21.3.1",
-    "rollup": "npm:@rollup/wasm-node@^4.62.2"
+    "rollup": "npm:@rollup/wasm-node@^4.63.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
     "@types/leaflet": "^1.9.22",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "eslint": "^10.8.1",
-    "globals": "^17.11.0",
-    "prettier": "^3.9.6",
+    "@types/react-dom": "^19.2.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0",
     "vite": "^7.3.6"
   },
   "dependencies": {
     "@kern-ux-annex/kern-react-kit": "^2.40.0",
-    "@ngageoint/geopackage": "^4.2.8",
+    "@ngageoint/geopackage": "^4.2.9",
     "h3-js": "^4.5.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",

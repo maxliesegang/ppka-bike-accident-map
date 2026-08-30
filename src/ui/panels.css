@@ -21,7 +21,7 @@
 .cp {
   font-family: var(
     --kern-typography-font-family-fira-sans,
-    'Fira Sans',
+    "Fira Sans",
     sans-serif
   );
   color: var(--kern-color-layout-text-default, #1d2a37);

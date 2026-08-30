@@ -1,8 +1,8 @@
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../../constants';
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
 import {
-  isUnfallatlasSource,
   type DataSourceId,
+  isUnfallatlasSource,
 } from '../../map/data-source-types';
 
 const accidentTypeLabels = new Map<AccidentType, string>(

@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { AccidentType, SeverityType } from '../data/accident-styles';
+import type { AccidentType, SeverityType } from '../data/accident-styles';
 
 export interface AccidentMarkerEntry {
   marker: L.CircleMarker;
@@ -181,8 +181,7 @@ export class AccidentMarkerSourceState {
   private refreshVisibleMarkers(
     isMarkerSelected: AccidentMarkerFilterPredicate,
   ): void {
-    const wasLayerVisible =
-      this.map !== null && this.map.hasLayer(this.visibleMarkersLayer);
+    const wasLayerVisible = this.map?.hasLayer(this.visibleMarkersLayer);
 
     if (this.map && wasLayerVisible) {
       this.map.removeLayer(this.visibleMarkersLayer);

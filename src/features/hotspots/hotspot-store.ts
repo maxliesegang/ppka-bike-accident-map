@@ -10,10 +10,10 @@ import {
   getSelectedDataSourceId,
   subscribeToDataSourceId,
 } from '../../map/data-source-store';
-import { binAccidentsIntoHotspots } from './spatial-binning';
 import { mergeAdjacentHotspots } from './hotspot-merging';
 import { rankHotspots } from './hotspot-ranking';
 import type { AccidentRecord, Hotspot } from './hotspot-types';
+import { binAccidentsIntoHotspots } from './spatial-binning';
 
 /**
  * Derives the ranked "worst spots" leaderboard from what is currently shown on

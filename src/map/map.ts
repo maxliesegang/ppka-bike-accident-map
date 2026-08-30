@@ -1,12 +1,12 @@
+import { setSqljsWasmLocateFile } from '@ngageoint/geopackage';
 import * as L from 'leaflet';
 import {
+  GEOPACKAGE_WASM_FILE,
   MAP_INITIAL_VIEW,
   MAP_ZOOM_LEVEL,
-  TILE_LAYER_URL,
   TILE_LAYER_ATTRIBUTION,
-  GEOPACKAGE_WASM_FILE,
+  TILE_LAYER_URL,
 } from '../constants';
-import { setSqljsWasmLocateFile } from '@ngageoint/geopackage';
 
 export function createMap(): L.Map {
   setSqljsWasmLocateFile(() => GEOPACKAGE_WASM_FILE);

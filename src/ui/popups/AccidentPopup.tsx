@@ -6,9 +6,9 @@ import {
   KernText,
 } from '@kern-ux-annex/kern-react-kit';
 import {
-  buildAccidentPopupViewModel,
   type AccidentPopupMetric,
   type AccidentPopupSummaryItem,
+  buildAccidentPopupViewModel,
 } from './accident-popup-view-model';
 
 interface AccidentPopupProps {
@@ -52,14 +52,14 @@ export function AccidentPopup({ properties }: AccidentPopupProps) {
         )}
       </header>
 
-      <div className="popup-summary" aria-label="Zusammenfassung">
+      <div className="popup-summary">
         {viewModel.summaryItems.map((item) => (
           <SummaryItem item={item} key={item.label} />
         ))}
       </div>
 
       {viewModel.metrics.length > 0 && (
-        <div className="popup-metrics" aria-label="Kennzahlen">
+        <div className="popup-metrics">
           {viewModel.metrics.map((metric) => (
             <MetricItem metric={metric} key={metric.label} />
           ))}

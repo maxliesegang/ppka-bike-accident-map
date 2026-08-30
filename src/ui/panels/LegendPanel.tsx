@@ -1,9 +1,9 @@
-import { useSyncExternalStore } from 'react';
 import {
   KernCheckbox,
   KernDivider,
   KernFieldset,
 } from '@kern-ux-annex/kern-react-kit';
+import { useSyncExternalStore } from 'react';
 import {
   ACCIDENT_LEGENDS,
   LOCAL_SEVERITY_LEGENDS,
@@ -14,16 +14,16 @@ import {
   getSeverityRadius,
 } from '../../data/accident-styles';
 import {
-  getSelectedDataSourceId,
-  subscribeToDataSourceId,
-} from '../../map/data-source-store';
-import {
   getSelectedAccidentTypes,
   getSelectedSeverityTypes,
   setAccidentTypeSelected,
   setSeverityTypeSelected,
   subscribeToAccidentMarkerFilters,
 } from '../../map/accident-marker-store';
+import {
+  getSelectedDataSourceId,
+  subscribeToDataSourceId,
+} from '../../map/data-source-store';
 import { PanelFrame } from './PanelFrame';
 
 /**

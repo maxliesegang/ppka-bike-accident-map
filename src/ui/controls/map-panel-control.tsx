@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { KernRoot } from '../KernRoot';
 import { FilterPanel } from '../panels/FilterPanel';

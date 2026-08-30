@@ -1,5 +1,3 @@
-import { useMemo, useSyncExternalStore } from 'react';
-import type * as L from 'leaflet';
 import {
   KernButton,
   KernCheckbox,
@@ -9,17 +7,19 @@ import {
   KernRadioGroup,
   KernText,
 } from '@kern-ux-annex/kern-react-kit';
+import type * as L from 'leaflet';
+import { useMemo, useSyncExternalStore } from 'react';
+import { localYearFilterController } from '../../map/accident-marker-store';
+import {
+  getSelectedDataSourceId,
+  setSelectedDataSourceId,
+  subscribeToDataSourceId,
+} from '../../map/data-source-store';
 import {
   isDataSourceId,
   isUnfallatlasSource,
 } from '../../map/data-source-types';
-import {
-  getSelectedDataSourceId,
-  subscribeToDataSourceId,
-  setSelectedDataSourceId,
-} from '../../map/data-source-store';
 import { unfallatlasYearFilterController } from '../../map/unfallatlas-layer';
-import { localYearFilterController } from '../../map/accident-marker-store';
 import {
   resolveYearMessage,
   type YearFilterController,

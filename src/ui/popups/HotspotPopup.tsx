@@ -7,10 +7,10 @@ import {
 } from '@kern-ux-annex/kern-react-kit';
 import type { AccidentType, SeverityType } from '../../data/accident-styles';
 import {
-  getHotspotCaveat,
   formatCount,
   getAccidentTypeLabel,
   getAccidentUnit,
+  getHotspotCaveat,
   getSeverityTypeLabel,
 } from '../../features/hotspots/hotspot-labels';
 import {
@@ -48,9 +48,7 @@ export function HotspotPopup({
             Unfallschwerpunkt
           </KernHeading>
         </div>
-        <span className="popup-rank" aria-label={`Platz ${rank}`}>
-          {rank}
-        </span>
+        <span className="popup-rank">{rank}</span>
       </header>
 
       <p className="popup-hero">

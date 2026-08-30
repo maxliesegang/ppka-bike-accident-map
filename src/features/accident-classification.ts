@@ -3,8 +3,8 @@ import type {
   AccidentParticipantCounts,
   AccidentProperties,
 } from '../data/accident-properties';
-import { getAccidentColor, getSeverityRadius } from '../data/accident-styles';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
+import { getAccidentColor, getSeverityRadius } from '../data/accident-styles';
 
 type AccidentClassifier = {
   type: AccidentType;

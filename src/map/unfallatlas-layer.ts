@@ -1,18 +1,18 @@
-import * as L from 'leaflet';
+import type * as L from 'leaflet';
+import { UNFALLATLAS_KARLSRUHE_REGION } from '../constants';
 import {
+  attachAccidentMarkersForSource,
   beginAccidentMarkerBatch,
   clearAccidentMarkersForSource,
-  endAccidentMarkerBatch,
-  attachAccidentMarkersForSource,
   detachAccidentMarkersForSource,
+  endAccidentMarkerBatch,
 } from './accident-marker-store';
+import type { DataSourceId } from './data-source-types';
 import {
   getAvailableUnfallatlasYears,
   loadUnfallatlasMarkersForYears,
   type UnfallatlasRegionFilter,
 } from './unfallatlas-loader';
-import { UNFALLATLAS_KARLSRUHE_REGION } from '../constants';
-import { type DataSourceId } from './data-source-types';
 import {
   areYearsEqual,
   normalizeYears,

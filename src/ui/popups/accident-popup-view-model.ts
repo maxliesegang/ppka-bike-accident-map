@@ -1,5 +1,8 @@
 export type AccidentPopupBadgeVariant =
-  'info' | 'success' | 'warning' | 'danger';
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'danger';
 
 export interface AccidentPopupSummaryItem {
   label: string;

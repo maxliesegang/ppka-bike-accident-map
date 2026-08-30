@@ -1,4 +1,4 @@
-import { GeoPackage, GeoPackageAPI } from '@ngageoint/geopackage';
+import { type GeoPackage, GeoPackageAPI } from '@ngageoint/geopackage';
 
 export async function fetchAndOpenGeoPackage(
   filePath: string,

@@ -1,11 +1,11 @@
-import * as L from 'leaflet';
+import type * as L from 'leaflet';
 import { ACCIDENT_LEGENDS, SEVERITY_LEGENDS } from '../constants';
 import type { AccidentType, SeverityType } from '../data/accident-styles';
-import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
 import {
-  AccidentMarkerSourceState,
   type AccidentMarkerEntry,
+  AccidentMarkerSourceState,
 } from './accident-marker-source-state';
+import { DATA_SOURCE_IDS, type DataSourceId } from './data-source-types';
 import { FilterSelection } from './filter-selection';
 import {
   areYearsEqual,

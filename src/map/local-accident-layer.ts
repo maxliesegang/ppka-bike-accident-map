@@ -1,14 +1,14 @@
-import * as L from 'leaflet';
-import { loadGeoPackageMarkers } from './geopackage-layer';
-import { loadPpkaCsvMarkers } from './ppka-loader';
+import type * as L from 'leaflet';
 import {
+  attachLocalAccidentMarkers,
   beginAccidentMarkerBatch,
   clearAccidentMarkersForSource,
   endAccidentMarkerBatch,
-  attachLocalAccidentMarkers,
   setLocalYearFilterStatus,
 } from './accident-marker-store';
-import { type DataSourceId } from './data-source-types';
+import type { DataSourceId } from './data-source-types';
+import { loadGeoPackageMarkers } from './geopackage-layer';
+import { loadPpkaCsvMarkers } from './ppka-loader';
 
 const LOCAL_SOURCE_ID: DataSourceId = 'local';
 
