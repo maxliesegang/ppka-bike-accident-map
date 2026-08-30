@@ -6,14 +6,11 @@ import type { AccidentType, SeverityType } from './data/accident-styles';
 export const MAP_INITIAL_CENTER: LngLatLike = [8.4, 49];
 export const MAP_ZOOM_LEVEL = 12;
 export const MAP_MAX_ZOOM_LEVEL = 19;
-// OpenStreetMap raster tiles: keyless and policy-compliant for this app's
-// low-traffic, attribution-backed use. (CARTO's basemaps, the previous choice,
-// now require an API key.)
-export const TILE_LAYER_TILES = [
-  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-] as const;
-export const TILE_LAYER_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+// OpenFreeMap's keyless Positron vector style keeps the basemap quiet so the
+// accident markers remain the visual focus.
+export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+export const MAP_STYLE_ATTRIBUTION =
+  '&copy; <a href="https://openfreemap.org/">OpenFreeMap</a>, <a href="https://openmaptiles.org/">OpenMapTiles</a>, <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 // Unfallatlas CSV configuration
 // Used as fallback when manifest discovery fails.

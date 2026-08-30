@@ -10,7 +10,7 @@ Interactive MapLibre GL JS map of bicycle and pedestrian accidents in Karlsruhe.
 - Filters for data source, year, accident type, and severity.
 - Top-30 hotspot list based on the currently visible accidents. Selecting a hotspot zooms to its approximate area and shows its breakdown.
 - GeoPackage and CSV data are loaded locally; the GeoPackage WASM runtime is bundled with the app.
-- Responsive, collapsible controls with OpenStreetMap attribution.
+- Responsive, collapsible controls with OpenFreeMap, OpenMapTiles, and OpenStreetMap attribution.
 
 Hotspot counts are not exposure-adjusted. Unfallatlas coordinates are approximate, and the Unfallatlas contains only accidents involving injury or death.
 
